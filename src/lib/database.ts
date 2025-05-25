@@ -16,20 +16,20 @@ export function getDatabase() {
     }
 
     db = new Database(dbPath);
-    
+
     // Enable WAL mode for better performance
     db.pragma('journal_mode = WAL');
-    
+
     // Initialize tables
     initializeTables();
   }
-  
+
   return db;
 }
 
 function initializeTables() {
   const db = getDatabase();
-  
+
   // Create history_scrapped table
   db.exec(`
     CREATE TABLE IF NOT EXISTS history_scrapped (
@@ -38,14 +38,29 @@ function initializeTables() {
       title TEXT,
       link TEXT,
       snippet TEXT,
-      displayed_link TEXT,
       position INTEGER,
       search_date DATETIME DEFAULT CURRENT_TIMESTAMP,
       user_id TEXT,
       serpapi_position INTEGER,
+      processed INTEGER DEFAULT 0,
+      category INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Add processed column if it doesn't exist (for existing databases)
+  try {
+    db.exec(`ALTER TABLE history_scrapped ADD COLUMN processed INTEGER DEFAULT 0`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add category column if it doesn't exist (for existing databases)
+  try {
+    db.exec(`ALTER TABLE history_scrapped ADD COLUMN category INTEGER DEFAULT 0`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
 
   // Create index for better performance
   db.exec(`
@@ -61,11 +76,12 @@ export interface SearchResult {
   title?: string;
   link?: string;
   snippet?: string;
-  displayed_link?: string;
   position?: number;
   search_date?: string;
   user_id?: string;
   serpapi_position?: number;
+  processed?: number;
+  category?: number;
   created_at?: string;
 }
 
@@ -80,9 +96,9 @@ export class SearchResultsRepository {
   insertSearchResults(results: SearchResult[]): void {
     const stmt = this.db.prepare(`
       INSERT INTO history_scrapped (
-        search_query, title, link, snippet, displayed_link, 
-        position, user_id, serpapi_position
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        search_query, title, link, snippet,
+        position, user_id, serpapi_position, processed, category
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMany = this.db.transaction((results: SearchResult[]) => {
@@ -92,10 +108,11 @@ export class SearchResultsRepository {
           result.title,
           result.link,
           result.snippet,
-          result.displayed_link,
           result.position,
           result.user_id,
-          result.serpapi_position
+          result.serpapi_position,
+          result.processed || 0,
+          result.category || 0
         );
       }
     });
@@ -106,7 +123,7 @@ export class SearchResultsRepository {
   // Get search results by query
   getSearchResultsByQuery(query: string, userId?: string): SearchResult[] {
     let sql = `
-      SELECT * FROM history_scrapped 
+      SELECT * FROM history_scrapped
       WHERE search_query = ?
     `;
     const params: any[] = [query];
@@ -125,7 +142,7 @@ export class SearchResultsRepository {
   // Get all search queries for a user
   getSearchHistory(userId?: string): { search_query: string; count: number; last_search: string }[] {
     let sql = `
-      SELECT 
+      SELECT
         search_query,
         COUNT(*) as count,
         MAX(created_at) as last_search
@@ -171,6 +188,45 @@ export class SearchResultsRepository {
     const stmt = this.db.prepare(sql);
     const result = stmt.get(...params) as { count: number };
     return result.count;
+  }
+
+  // Update processed status for a specific result
+  updateProcessedStatus(id: number, processed: number): void {
+    const stmt = this.db.prepare(`
+      UPDATE history_scrapped
+      SET processed = ?
+      WHERE id = ?
+    `);
+    stmt.run(processed, id);
+  }
+
+  // Update processed status for all results of a query
+  updateProcessedStatusByQuery(query: string, processed: number, userId?: string): void {
+    let sql = `UPDATE history_scrapped SET processed = ? WHERE search_query = ?`;
+    const params: any[] = [processed, query];
+
+    if (userId) {
+      sql += ` AND user_id = ?`;
+      params.push(userId);
+    }
+
+    const stmt = this.db.prepare(sql);
+    stmt.run(...params);
+  }
+
+  // Check if domain exists in database
+  domainExists(domain: string, userId?: string): boolean {
+    let sql = `SELECT COUNT(*) as count FROM history_scrapped WHERE link = ?`;
+    const params: any[] = [domain];
+
+    if (userId) {
+      sql += ` AND user_id = ?`;
+      params.push(userId);
+    }
+
+    const stmt = this.db.prepare(sql);
+    const result = stmt.get(...params) as { count: number };
+    return result.count > 0;
   }
 }
 

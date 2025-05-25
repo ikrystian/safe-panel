@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useUser, UserButton } from "@clerk/nextjs";
 import {
   Home,
@@ -46,6 +47,19 @@ export default function DashboardLayout({
 }) {
   const { user } = useUser();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="text-sm text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>

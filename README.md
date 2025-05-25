@@ -5,6 +5,7 @@
 - 🔐 **Authentication**: Secure user authentication with Clerk
 - 📊 **Dashboard**: Comprehensive dashboard with training statistics
 - 🔍 **Pages Database**: Advanced web search with SerpAPI integration (50 requests per search)
+- 🤖 **Automatic Processing**: Domain extraction, duplicate removal, and categorization during search
 - 💾 **SQLite Database**: Local data storage with search history and results
 - 🎨 **Modern UI**: Built with chadcn/ui components and Tailwind CSS
 - 📱 **Responsive**: Mobile-first responsive design
@@ -40,11 +41,12 @@ history_scrapped {
   title: text
   link: text
   snippet: text
-  displayed_link: text
   position: integer
   search_date: datetime (default current_timestamp)
   user_id: text
   serpapi_position: integer
+  processed: integer (default 0)
+  category: integer (default 0)
   created_at: datetime (default current_timestamp)
 }
 ```

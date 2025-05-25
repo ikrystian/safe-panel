@@ -26,8 +26,9 @@ import {
   Trash2,
   History,
   Loader2,
+  Check,
+  X,
 } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
 
 interface SearchResult {
   id?: number;
@@ -35,11 +36,12 @@ interface SearchResult {
   title?: string;
   link?: string;
   snippet?: string;
-  displayed_link?: string;
   position?: number;
   search_date?: string;
   user_id?: string;
   serpapi_position?: number;
+  processed?: number;
+  category?: number;
   created_at?: string;
 }
 
@@ -50,7 +52,6 @@ interface SearchHistory {
 }
 
 export default function PagesDatabasePage() {
-  const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -145,6 +146,29 @@ export default function PagesDatabasePage() {
       }
     } catch (error) {
       console.error("Error deleting search history:", error);
+    }
+  };
+
+  const updateProcessedStatus = async (id: number, processed: number) => {
+    try {
+      const response = await fetch("/api/search", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id, processed }),
+      });
+
+      if (response.ok) {
+        // Update the local state
+        setSearchResults((prev) =>
+          prev.map((result) =>
+            result.id === id ? { ...result, processed } : result
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error updating processed status:", error);
     }
   };
 
@@ -290,7 +314,8 @@ export default function PagesDatabasePage() {
           <CardHeader>
             <CardTitle>Wyniki wyszukiwania dla: "{selectedQuery}"</CardTitle>
             <CardDescription>
-              Znaleziono {searchResults.length} wyników
+              Znaleziono {searchResults.length} wyników (automatycznie
+              przetworzonych)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -298,9 +323,10 @@ export default function PagesDatabasePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">Poz.</TableHead>
-                  <TableHead>Tytuł</TableHead>
                   <TableHead>Link</TableHead>
+                  <TableHead>Tytuł</TableHead>
                   <TableHead>Opis</TableHead>
+                  <TableHead className="w-24">Processed</TableHead>
                   <TableHead className="w-32">Data</TableHead>
                   <TableHead className="w-16">Akcje</TableHead>
                 </TableRow>
@@ -311,11 +337,7 @@ export default function PagesDatabasePage() {
                     <TableCell className="font-medium">
                       {result.position || index + 1}
                     </TableCell>
-                    <TableCell className="max-w-xs">
-                      <div className="truncate" title={result.title}>
-                        {result.title || "Brak tytułu"}
-                      </div>
-                    </TableCell>
+
                     <TableCell className="max-w-xs">
                       <div className="truncate">
                         <a
@@ -325,8 +347,13 @@ export default function PagesDatabasePage() {
                           className="text-blue-600 hover:underline"
                           title={result.link}
                         >
-                          {result.displayed_link || result.link}
+                          {result.link}
                         </a>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={result.title}>
+                        {result.title || "Brak tytułu"}
                       </div>
                     </TableCell>
                     <TableCell className="max-w-md">
@@ -336,6 +363,30 @@ export default function PagesDatabasePage() {
                       >
                         {result.snippet || "Brak opisu"}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          updateProcessedStatus(
+                            result.id!,
+                            result.processed === 1 ? 0 : 1
+                          )
+                        }
+                        className={`${
+                          result.processed === 1
+                            ? "text-green-600 hover:text-green-700"
+                            : "text-gray-400 hover:text-gray-600"
+                        }`}
+                        disabled={!result.id}
+                      >
+                        {result.processed === 1 ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <X className="h-4 w-4" />
+                        )}
+                      </Button>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {result.created_at
