@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Jest - Sports Training Tracker",
-  description: "Track your sports training attendance and progress",
+  title: "SAFEr",
+  description: "Fake in until make it",
 };
 
 export default function RootLayout({

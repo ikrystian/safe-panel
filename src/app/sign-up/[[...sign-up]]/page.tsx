@@ -1,4 +1,4 @@
-import { SignUp } from '@clerk/nextjs'
+import { SignUp } from "@clerk/nextjs";
 
 export default function Page() {
   return (
@@ -6,23 +6,23 @@ export default function Page() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Join Jest
+            Join Safe
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Start tracking your sports training today
           </p>
         </div>
         <div className="flex justify-center">
-          <SignUp 
+          <SignUp
             appearance={{
               elements: {
                 rootBox: "mx-auto",
                 card: "shadow-lg border-0",
-              }
+              },
             }}
           />
         </div>
       </div>
     </div>
-  )
+  );
 }
