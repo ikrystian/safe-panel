@@ -136,7 +136,21 @@ The application uses chadcn/ui components including:
 - Cards for displaying statistics and information
 - Buttons with various variants
 - Responsive layout components
-- Dark/light mode support
+- Theme switcher with dark/light/system mode support
+
+## Theme System
+
+The application includes a comprehensive theme system:
+
+- **Default System Theme**: Automatically detects and applies user's OS preference
+- **Theme Switcher**: Located next to the Bell button in the dashboard header
+- **Available Themes**:
+  - Light: Forces light theme
+  - Dark: Forces dark theme
+  - System: Follows OS preference and updates automatically
+- **Persistence**: Theme preference is saved in localStorage
+- **Real-time Updates**: Responds to system theme changes without page refresh
+- **Powered by**: next-themes library for reliable theme management
 
 ## Contributing
 

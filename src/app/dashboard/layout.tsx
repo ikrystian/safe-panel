@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -133,6 +134,7 @@ export default function DashboardLayout({
               <Button variant="ghost" size="icon">
                 <Bell className="h-4 w-4" />
               </Button>
+              <ThemeSwitcher />
             </div>
           </div>
         </header>
