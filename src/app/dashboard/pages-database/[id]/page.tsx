@@ -288,13 +288,6 @@ export default function SearchResultDetailsPage() {
                     </a>
                   </Button>
                 </div>
-                <a
-                  href={`${result.link}/wp-json/wp/v2/users`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {`${result.link}/wp-json/wp/v2/users`}
-                </a>
               </div>
 
               <Separator />
