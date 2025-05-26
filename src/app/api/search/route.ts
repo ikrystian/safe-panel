@@ -126,14 +126,30 @@ async function fetchAndSaveMetaGenerator(searchResultId: number, link: string): 
     if (response.ok) {
       const html = await response.text();
       const $ = cheerio.load(html);
-      const generatorTag = $('meta[name="generator"]');
-      const generatorValue = generatorTag.attr('content');
+      let selectedGeneratorValue: string | null = null;
+      let firstGeneratorValue: string | null = null;
 
-      if (generatorValue) {
-        searchResultsRepo.updateMetaGenerator(searchResultId, generatorValue);
-        console.log(`Saved meta generator "${generatorValue}" for result ${searchResultId}`);
+      $('meta[name="generator"]').each((i, element) => {
+        const generatorValue = $(element).attr('content');
+        if (generatorValue) {
+          if (generatorValue.startsWith('WordPress')) {
+            selectedGeneratorValue = generatorValue;
+            return false; // Stop iteration if WordPress generator is found
+          }
+          if (firstGeneratorValue === null) {
+            firstGeneratorValue = generatorValue; // Store the first encountered generator
+          }
+        }
+      });
+
+      // If a WordPress generator was found, use it. Otherwise, use the first general generator.
+      const finalGeneratorValue = selectedGeneratorValue || firstGeneratorValue;
+
+      if (finalGeneratorValue) {
+        searchResultsRepo.updateMetaGenerator(searchResultId, finalGeneratorValue);
+        console.log(`Saved meta generator "${finalGeneratorValue}" for result ${searchResultId}`);
       } else {
-        searchResultsRepo.updateMetaGenerator(searchResultId, null); // Store null if not found
+        searchResultsRepo.updateMetaGenerator(searchResultId, null); // Store null if no generator found
         console.log(`No meta generator found for ${link}`);
       }
     } else {
@@ -226,7 +242,7 @@ export async function POST(request: NextRequest) {
         console.log(`Making request ${i + 1}/${maxRequests}, start position: ${startPosition}`);
 
         const searchParams = {
-          q: query + "  inurl:wp-content",
+          q: query + "  inurl:/wp-",
           location: "Poland", // You can make this configurable
           hl: "pl", // Language
           gl: "pl", // Country
