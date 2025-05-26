@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -213,6 +213,8 @@ export default function PagesDatabasePage() {
     }
   };
 
+  const resultsTableRef = useRef<HTMLDivElement>(null);
+
   const loadHistoryResults = async (query: string) => {
     try {
       const response = await fetch(
@@ -223,6 +225,15 @@ export default function PagesDatabasePage() {
         setSearchResults(data.results || []);
         setSelectedQuery(query);
         setPaginationState(data.pagination || null);
+
+        // Scroll to the results table after setting the state
+        // Use a timeout to ensure the DOM has updated and the table is visible
+        setTimeout(() => {
+          resultsTableRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }, 100);
       }
     } catch (error) {
       console.error("Error loading history results:", error);
@@ -460,20 +471,7 @@ export default function PagesDatabasePage() {
                         <Eye className="h-4 w-4 mr-1" />
                         Pokaż wyniki
                       </Button>
-                      {paginationState && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSearchQuery(item.search_query);
-                            setSelectedQuery(item.search_query);
-                            loadHistoryResults(item.search_query);
-                          }}
-                        >
-                          <Search className="h-4 w-4 mr-1" />
-                          Kontynuuj
-                        </Button>
-                      )}
+
                       <Button
                         variant="ghost"
                         size="sm"
@@ -492,7 +490,7 @@ export default function PagesDatabasePage() {
 
       {/* Search Results */}
       {selectedQuery && searchResults.length > 0 && (
-        <Card>
+        <Card ref={resultsTableRef}>
           <CardHeader>
             <CardTitle>Wyniki wyszukiwania dla: "{selectedQuery}"</CardTitle>
             <CardDescription>
@@ -526,14 +524,6 @@ export default function PagesDatabasePage() {
                     </>
                   )}
                 </Button>
-                <Button
-                  onClick={(e) => handleSearch(e, true)}
-                  disabled={isSearching}
-                  variant="outline"
-                  size="sm"
-                >
-                  Resetuj i zacznij od nowa
-                </Button>
               </div>
             )}
           </CardHeader>
@@ -544,8 +534,7 @@ export default function PagesDatabasePage() {
                   <TableHead>Link</TableHead>
                   <TableHead>Tytuł</TableHead>
                   <TableHead>Opis</TableHead>
-                  <TableHead className="w-24">Processed</TableHead>
-                  <TableHead className="w-20">Błędy</TableHead>
+                  <TableHead className="w-32">Status</TableHead>
                   <TableHead className="w-32">Data</TableHead>
                   <TableHead className="w-32">Akcje</TableHead>
                 </TableRow>
@@ -577,62 +566,45 @@ export default function PagesDatabasePage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          processWebsite(
-                            result.id!,
-                            result.processed === 1 ? 0 : 1
-                          )
-                        }
-                        className={`${
-                          result.processed === 1
-                            ? "text-green-600 hover:text-green-700"
-                            : "text-gray-400 hover:text-gray-600"
-                        }`}
-                        disabled={!result.id}
-                      >
+                      <div className="flex items-center gap-2">
                         {result.processed === 1 ? (
                           <Check className="h-4 w-4" />
                         ) : (
                           <X className="h-4 w-4" />
                         )}
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const wpUserErrors = getWordPressUserErrors(
-                          result.errors || null
-                        );
-                        if (wpUserErrors.length > 0) {
-                          return (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <User className="h-4 w-4 text-red-500" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <div className="max-w-xs">
-                                  <p className="font-medium mb-1">
-                                    Błędy użytkowników WordPress:
-                                  </p>
-                                  {wpUserErrors.map((error, idx) => (
-                                    <div key={idx} className="text-xs mb-1">
-                                      <p>{error.message}</p>
-                                      <p className="text-muted-foreground">
-                                        {new Date(
-                                          error.timestamp
-                                        ).toLocaleString("pl-PL")}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
+                        {(() => {
+                          const wpUserErrors = getWordPressUserErrors(
+                            result.errors || null
                           );
-                        }
-                        return null;
-                      })()}
+                          if (wpUserErrors.length > 0) {
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <User className="h-4 w-4 text-red-500" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="max-w-xs">
+                                    <p className="font-medium mb-1">
+                                      Błędy użytkowników WordPress:
+                                    </p>
+                                    {wpUserErrors.map((error, idx) => (
+                                      <div key={idx} className="text-xs mb-1">
+                                        <p>{error.message}</p>
+                                        <p className="text-muted-foreground">
+                                          {new Date(
+                                            error.timestamp
+                                          ).toLocaleString("pl-PL")}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {result.created_at

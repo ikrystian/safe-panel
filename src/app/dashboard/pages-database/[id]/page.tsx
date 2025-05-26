@@ -107,8 +107,6 @@ export default function SearchResultDetailsPage() {
 
       if (response.ok) {
         setResult((prev) => (prev ? { ...prev, processed } : null));
-
-        // If setting to processed (1), reload data to get WordPress users
         if (processed === 1) {
           await loadResultDetails(params.id as string);
         }
@@ -203,17 +201,11 @@ export default function SearchResultDetailsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {result.processed === 0 ? (
-                <DropdownMenuItem onClick={() => processWebsite(1)}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Przetwórz stronę
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onClick={() => processWebsite(0)}>
-                  <X className="h-4 w-4 mr-2" />
-                  Oznacz jako nieprzetworzony
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onClick={() => processWebsite(1)}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Przetwórz stronę
+              </DropdownMenuItem>
+
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <a
@@ -482,6 +474,19 @@ export default function SearchResultDetailsPage() {
                 <p className="text-sm">
                   {result.search_date
                     ? new Date(result.search_date).toLocaleString("pl-PL")
+                    : "Brak danych"}
+                </p>
+              </div>
+
+              <div>
+                <span className="text-sm text-muted-foreground">
+                  Ostatnia próba przetwarzania WP:
+                </span>
+                <p className="text-sm">
+                  {result.wp_fetch_attempted_at
+                    ? new Date(result.wp_fetch_attempted_at).toLocaleString(
+                        "pl-PL"
+                      )
                     : "Brak danych"}
                 </p>
               </div>
