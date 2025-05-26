@@ -4,7 +4,9 @@
 
 - 🔐 **Authentication**: Secure user authentication with Clerk
 - 📊 **Dashboard**: Comprehensive dashboard with training statistics
+- 📈 **Analytics**: Advanced analytics page with charts and statistics based on database data
 - 🔍 **Pages Database**: Advanced web search with SerpAPI integration (50 requests per search)
+- ➕ **Manual Page Addition**: Add pages manually without using search API
 - 🤖 **Automatic Processing**: Domain extraction, duplicate removal, and categorization during search
 - 💾 **SQLite Database**: Local data storage with search history and results
 - 🎨 **Modern UI**: Built with chadcn/ui components and Tailwind CSS
@@ -17,6 +19,7 @@
 - **Database**: SQLite with better-sqlite3
 - **Search API**: SerpAPI (Google Search Results)
 - **UI Components**: chadcn/ui (shadcn/ui)
+- **Charts**: Recharts for data visualization
 - **Styling**: Tailwind CSS v4
 - **Icons**: Lucide React
 - **Language**: TypeScript
@@ -250,6 +253,93 @@ The application fetches and stores WordPress user data when processing websites:
 - **Timestamp Tracking**: Records when fetch attempts were made and when errors occurred
 - **Persistent Storage**: Users and error information saved to database
 - **Minimal Data**: Only essential information is stored for better performance
+
+## Analytics Dashboard (Implemented)
+
+The analytics page provides comprehensive insights into search activity and database statistics:
+
+### 📊 Overview Statistics
+
+- **Total Results**: Count of all search results in database
+- **WordPress Users**: Number of discovered WordPress users
+- **Search Queries**: Count of unique search phrases
+- **API Requests**: Total SerpAPI requests made
+
+### 📈 Interactive Charts
+
+- **Processing Status**: Pie chart showing processed vs unprocessed results
+- **WordPress Fetch Status**: Distribution of WordPress API fetch results
+- **Search Activity**: Line chart of search activity over last 30 days
+- **Top Queries**: Bar chart of most popular search terms
+
+### 🔍 Recent Activity
+
+- **Last 7 Days**: Recent search activity with status indicators
+- **Status Badges**: Visual indicators for processing and WordPress status
+- **Quick Overview**: Title, link, and timestamp for each activity
+
+### 📋 Data Sources
+
+- **Real-time Data**: All statistics pulled directly from SQLite database
+- **User-specific**: Analytics filtered by authenticated user
+- **Comprehensive**: Covers all aspects of search and processing activity
+
+### 🎨 Visual Features
+
+- **Responsive Charts**: Built with Recharts library
+- **Color-coded Status**: Different colors for various states
+- **Interactive Tooltips**: Detailed information on hover
+- **Loading States**: Skeleton loaders during data fetch
+
+## Manual Page Addition (Implemented)
+
+Users can manually add pages to the database without using the search API:
+
+### ➕ Add Page Dialog
+
+- **Modal Form**: Clean dialog interface for adding pages
+- **Required Fields**: URL and search query are mandatory
+- **Optional Fields**: Title and description can be added
+- **URL Validation**: Real-time validation of URL format
+- **Duplicate Prevention**: Checks if page already exists in database
+
+### 📝 Form Fields
+
+- **Link**: Full URL to the webpage (required, validated)
+- **Search Query**: The search term this page relates to (required)
+- **Title**: Page title (optional)
+- **Description**: Brief description or snippet (optional)
+- **Category**: Automatically set to 2 for manual entries
+
+### 🔧 Technical Features
+
+- **API Endpoint**: `/api/pages` for handling manual additions
+- **Database Integration**: Uses `insertManualSearchResult()` method
+- **User Authentication**: Only authenticated users can add pages
+- **Error Handling**: Comprehensive error messages and validation
+- **Success Feedback**: Visual confirmation when page is added
+
+### 🎯 Use Cases
+
+- **Known Websites**: Add specific sites you want to track
+- **Competitor Analysis**: Manually add competitor pages
+- **Reference Sites**: Add important industry websites
+- **Custom Lists**: Build curated lists of relevant pages
+
+### 🛡️ Validation & Security
+
+- **URL Format**: Validates proper URL structure
+- **Duplicate Check**: Prevents adding existing pages
+- **User Isolation**: Each user can only see their own pages
+- **Input Sanitization**: Trims whitespace and validates input
+
+### 🎨 User Experience
+
+- **Intuitive Interface**: Simple form with clear labels
+- **Real-time Validation**: Immediate feedback on input errors
+- **Loading States**: Shows progress during submission
+- **Success Animation**: Visual confirmation of successful addition
+- **Auto-refresh**: Updates page list after adding new page
 
 ## Contributing
 

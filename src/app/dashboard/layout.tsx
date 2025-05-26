@@ -53,7 +53,7 @@ export default function DashboardLayout({
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <span className="text-sm font-bold">S</span>
             </div>
-            <span className="text-lg font-semibold">SAFE</span>
+            <span className="text-lg font-semibold">AFE</span>
           </div>
 
           {/* Navigation Menu */}

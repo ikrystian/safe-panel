@@ -35,6 +35,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AddPageDialog } from "@/components/add-page-dialog";
 import {
   Search,
   Database,
@@ -331,7 +332,7 @@ export default function PagesDatabasePage() {
             Wyszukiwanie
           </CardTitle>
           <CardDescription>
-            Wprowadź frazę do wyszukania. System wykona 50 zapytań do API i
+            Wprowadź frazę do wyszukania. System wykona zapytania do API i
             zapisze wszystkie wyniki.
           </CardDescription>
         </CardHeader>
@@ -358,6 +359,18 @@ export default function PagesDatabasePage() {
               )}
             </Button>
           </form>
+
+          <div className="mt-4 pt-4 border-t">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium">Dodaj stronę ręcznie</h3>
+                <p className="text-xs text-muted-foreground">
+                  Dodaj stronę bez używania wyszukiwarki
+                </p>
+              </div>
+              <AddPageDialog onPageAdded={loadSearchHistory} />
+            </div>
+          </div>
           {error && (
             <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
               {error}
@@ -427,7 +440,7 @@ export default function PagesDatabasePage() {
                 return (
                   <div
                     key={item.search_query}
-                    className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
+                    className="flex items-center justify-between p-3 border rounded-lg bg-muted/50 history-group-item"
                   >
                     <div className="flex flex-col gap-1 flex-1">
                       <div className="flex items-center gap-2">

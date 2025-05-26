@@ -505,6 +505,30 @@ export class SearchResultsRepository {
     `);
     stmt.run(generators ? JSON.stringify(generators) : null, searchResultId);
   }
+
+  // Insert single search result manually
+  insertManualSearchResult(result: SearchResult): number {
+    const stmt = this.db.prepare(`
+      INSERT INTO history_scrapped (
+        search_query, title, link, snippet,
+        position, user_id, serpapi_position, processed, category
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const info = stmt.run(
+      result.search_query,
+      result.title || null,
+      result.link || null,
+      result.snippet || null,
+      result.position || null,
+      result.user_id,
+      result.serpapi_position || null,
+      result.processed || 0,
+      result.category || 0
+    );
+
+    return info.lastInsertRowid as number;
+  }
 }
 
 // Export singleton instance
