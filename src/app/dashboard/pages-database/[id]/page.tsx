@@ -25,6 +25,7 @@ import {
   ChevronDown,
   Settings,
   RefreshCw,
+  Eye,
 } from "lucide-react";
 
 interface SearchResult {
@@ -77,23 +78,40 @@ export default function SearchResultDetailsPage() {
   };
 
   const processWebsite = async (processed: number) => {
-    if (!result?.id) return;
+    if (!result?.id || !result?.link) return;
 
     try {
       setProcessingWebsite(true);
-      const response = await fetch("/api/search", {
-        method: "PATCH",
+
+      // Send POST request to external scan service
+      const scanResponse = await fetch("http://localhost:4000/scan", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id: result.id, processed }),
+        body: JSON.stringify({
+          url: result.link,
+          callbackUrl: "http://localhost:3000/save",
+        }),
       });
 
-      if (response.ok) {
-        setResult((prev) => (prev ? { ...prev, processed } : null));
-        if (processed === 1) {
-          await loadResultDetails(params.id as string);
+      if (scanResponse.ok) {
+        console.log("Scan request sent successfully");
+
+        // Update the processed status in our database
+        const response = await fetch("/api/search", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: result.id, processed }),
+        });
+
+        if (response.ok) {
+          setResult((prev) => (prev ? { ...prev, processed } : null));
         }
+      } else {
+        console.error("Failed to send scan request:", scanResponse.status);
       }
     } catch (error) {
       console.error("Error processing website:", error);
