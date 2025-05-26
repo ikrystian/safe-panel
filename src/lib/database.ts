@@ -61,18 +61,6 @@ function initializeTables() {
     )
   `);
 
-  // Create wordpress_users table to store fetched WordPress users
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS wordpress_users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      search_result_id INTEGER NOT NULL,
-      wp_user_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (search_result_id) REFERENCES history_scrapped (id) ON DELETE CASCADE
-    )
-  `);
-
   // Add processed column if it doesn't exist (for existing databases)
   try {
     db.exec(`ALTER TABLE history_scrapped ADD COLUMN processed INTEGER DEFAULT 0`);
@@ -106,13 +94,6 @@ function initializeTables() {
     // Column already exists, ignore error
   }
 
-  // Add slug column to wordpress_users if it doesn't exist (for existing databases)
-  try {
-    db.exec(`ALTER TABLE wordpress_users ADD COLUMN slug TEXT DEFAULT NULL`);
-  } catch (error) {
-    // Column already exists, ignore error
-  }
-
   // Add errors column to history_scrapped if it doesn't exist (for existing databases)
   try {
     db.exec(`ALTER TABLE history_scrapped ADD COLUMN errors TEXT DEFAULT NULL`);
@@ -133,7 +114,6 @@ function initializeTables() {
     CREATE INDEX IF NOT EXISTS idx_search_date ON history_scrapped(search_date);
     CREATE INDEX IF NOT EXISTS idx_user_id ON history_scrapped(user_id);
     CREATE INDEX IF NOT EXISTS idx_pagination_query_user ON search_pagination(search_query, user_id);
-    CREATE INDEX IF NOT EXISTS idx_wp_users_search_result ON wordpress_users(search_result_id);
   `);
 }
 
@@ -154,7 +134,7 @@ export interface SearchResult {
   wp_fetch_error?: string | null;
   wp_fetch_attempted_at?: string | null;
   errors?: string | null;
-  meta_generator?: string[] | null;
+  // meta_generator?: string[] | null; // Removed
 }
 
 export interface SearchPagination {
@@ -164,15 +144,6 @@ export interface SearchPagination {
   last_start_position: number;
   total_requests_made: number;
   last_updated?: string;
-}
-
-export interface WordPressUser {
-  id?: number;
-  search_result_id: number;
-  wp_user_id: number;
-  name: string;
-  slug?: string;
-  created_at?: string;
 }
 
 export class SearchResultsRepository {
@@ -228,20 +199,21 @@ export class SearchResultsRepository {
     const stmt = this.db.prepare(sql);
     const results = stmt.all(...params) as SearchResult[];
 
-    return results.map(result => {
-      if (typeof result.meta_generator === 'string') {
-        try {
-          result.meta_generator = JSON.parse(result.meta_generator);
-        } catch (e) {
-          result.meta_generator = null;
-        }
-      } else if (result.meta_generator === null) {
-        result.meta_generator = null;
-      } else if (!Array.isArray(result.meta_generator)) {
-        result.meta_generator = null;
-      }
-      return result;
-    });
+    return results;
+    // return results.map(result => {
+    //   if (typeof result.meta_generator === 'string') {
+    //     try {
+    //       result.meta_generator = JSON.parse(result.meta_generator);
+    //     } catch (e) {
+    //       result.meta_generator = null;
+    //     }
+    //   } else if (result.meta_generator === null) {
+    //     result.meta_generator = null;
+    //   } else if (!Array.isArray(result.meta_generator)) {
+    //     result.meta_generator = null;
+    //   }
+    //   return result;
+    // });
   }
 
   // Get search result by ID
@@ -260,17 +232,17 @@ export class SearchResultsRepository {
     const stmt = this.db.prepare(sql);
     const result = stmt.get(...params) as SearchResult | null;
 
-    if (result && typeof result.meta_generator === 'string') {
-      try {
-        result.meta_generator = JSON.parse(result.meta_generator);
-      } catch (e) {
-        result.meta_generator = null; // Handle parsing errors
-      }
-    } else if (result && result.meta_generator === null) {
-      result.meta_generator = null;
-    } else if (result && !Array.isArray(result.meta_generator)) {
-      result.meta_generator = null; // Ensure it's an array or null
-    }
+    // if (result && typeof result.meta_generator === 'string') {
+    //   try {
+    //     result.meta_generator = JSON.parse(result.meta_generator);
+    //   } catch (e) {
+    //     result.meta_generator = null; // Handle parsing errors
+    //   }
+    // } else if (result && result.meta_generator === null) {
+    //   result.meta_generator = null;
+    // } else if (result && !Array.isArray(result.meta_generator)) {
+    //   result.meta_generator = null; // Ensure it's an array or null
+    // }
 
     return result;
   }
@@ -403,53 +375,53 @@ export class SearchResultsRepository {
     return stmt.all(userId) as SearchPagination[];
   }
 
-  // WordPress Users methods
-  insertWordPressUsers(users: WordPressUser[]): void {
-    const stmt = this.db.prepare(`
-      INSERT INTO wordpress_users (
-        search_result_id, wp_user_id, name, slug
-      ) VALUES (?, ?, ?, ?)
-    `);
+  // WordPress Users methods - REMOVED
+  // insertWordPressUsers(users: WordPressUser[]): void {
+  //   const stmt = this.db.prepare(`
+  //     INSERT INTO wordpress_users (
+  //       search_result_id, wp_user_id, name, slug
+  //     ) VALUES (?, ?, ?, ?)
+  //   `);
 
-    const insertMany = this.db.transaction((users: WordPressUser[]) => {
-      for (const user of users) {
-        stmt.run(
-          user.search_result_id,
-          user.wp_user_id,
-          user.name,
-          user.slug || null
-        );
-      }
-    });
+  //   const insertMany = this.db.transaction((users: WordPressUser[]) => {
+  //     for (const user of users) {
+  //       stmt.run(
+  //         user.search_result_id,
+  //         user.wp_user_id,
+  //         user.name,
+  //         user.slug || null
+  //       );
+  //     }
+  //   });
 
-    insertMany(users);
-  }
+  //   insertMany(users);
+  // }
 
-  getWordPressUsersBySearchResultId(searchResultId: number): WordPressUser[] {
-    const stmt = this.db.prepare(`
-      SELECT * FROM wordpress_users
-      WHERE search_result_id = ?
-      ORDER BY name ASC
-    `);
-    return stmt.all(searchResultId) as WordPressUser[];
-  }
+  // getWordPressUsersBySearchResultId(searchResultId: number): WordPressUser[] {
+  //   const stmt = this.db.prepare(`
+  //     SELECT * FROM wordpress_users
+  //     WHERE search_result_id = ?
+  //     ORDER BY name ASC
+  //   `);
+  //   return stmt.all(searchResultId) as WordPressUser[];
+  // }
 
-  deleteWordPressUsersBySearchResultId(searchResultId: number): void {
-    const stmt = this.db.prepare(`
-      DELETE FROM wordpress_users
-      WHERE search_result_id = ?
-    `);
-    stmt.run(searchResultId);
-  }
+  // deleteWordPressUsersBySearchResultId(searchResultId: number): void {
+  //   const stmt = this.db.prepare(`
+  //     DELETE FROM wordpress_users
+  //     WHERE search_result_id = ?
+  //   `);
+  //   stmt.run(searchResultId);
+  // }
 
-  hasWordPressUsers(searchResultId: number): boolean {
-    const stmt = this.db.prepare(`
-      SELECT COUNT(*) as count FROM wordpress_users
-      WHERE search_result_id = ?
-    `);
-    const result = stmt.get(searchResultId) as { count: number };
-    return result.count > 0;
-  }
+  // hasWordPressUsers(searchResultId: number): boolean {
+  //   const stmt = this.db.prepare(`
+  //     SELECT COUNT(*) as count FROM wordpress_users
+  //     WHERE search_result_id = ?
+  //   `);
+  //   const result = stmt.get(searchResultId) as { count: number };
+  //   return result.count > 0;
+  // }
 
   // Update WordPress fetch status
   updateWordPressFetchStatus(
@@ -496,15 +468,15 @@ export class SearchResultsRepository {
     updateStmt.run(JSON.stringify(errors), searchResultId);
   }
 
-  // Update meta_generator field for a specific result
-  updateMetaGenerator(searchResultId: number, generators: string[] | null): void {
-    const stmt = this.db.prepare(`
-      UPDATE history_scrapped
-      SET meta_generator = ?
-      WHERE id = ?
-    `);
-    stmt.run(generators ? JSON.stringify(generators) : null, searchResultId);
-  }
+  // Update meta_generator field for a specific result - REMOVED
+  // updateMetaGenerator(searchResultId: number, generators: string[] | null): void {
+  //   const stmt = this.db.prepare(`
+  //     UPDATE history_scrapped
+  //     SET meta_generator = ?
+  //     WHERE id = ?
+  //   `);
+  //   stmt.run(generators ? JSON.stringify(generators) : null, searchResultId);
+  // }
 
   // Insert single search result manually
   insertManualSearchResult(result: SearchResult): number {

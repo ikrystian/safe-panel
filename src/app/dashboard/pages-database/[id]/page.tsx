@@ -21,12 +21,10 @@ import {
   Globe,
   FileText,
   Check,
-  X,
   Loader2,
   ChevronDown,
   Settings,
   RefreshCw,
-  Eye,
 } from "lucide-react";
 
 interface SearchResult {
@@ -42,20 +40,7 @@ interface SearchResult {
   processed?: number;
   category?: number;
   created_at?: string;
-  wp_fetch_status?: string | null;
-  wp_fetch_error?: string | null;
-  wp_fetch_attempted_at?: string | null;
   errors?: string | null;
-  meta_generator?: string[] | null; // Add meta_generator to the interface
-}
-
-interface WordPressUser {
-  id?: number;
-  search_result_id: number;
-  wp_user_id: number;
-  name: string;
-  slug?: string;
-  created_at?: string;
 }
 
 export default function SearchResultDetailsPage() {
@@ -64,7 +49,6 @@ export default function SearchResultDetailsPage() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [wpUsers, setWpUsers] = useState<WordPressUser[]>([]);
   const [processingWebsite, setProcessingWebsite] = useState(false);
 
   useEffect(() => {
@@ -81,7 +65,6 @@ export default function SearchResultDetailsPage() {
       if (response.ok) {
         const data = await response.json();
         setResult(data.result);
-        setWpUsers(data.wpUsers || []);
       } else {
         setError("Nie udało się załadować szczegółów wyniku");
       }
@@ -216,17 +199,6 @@ export default function SearchResultDetailsPage() {
                   Otwórz stronę
                 </a>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a
-                  href={`${result.link}/wp-json/wp/v2/users`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center show-users-api-link"
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  WP USERS API
-                </a>
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -293,110 +265,6 @@ export default function SearchResultDetailsPage() {
               </div>
 
               <Separator />
-
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Użytkownicy WordPress
-                </label>
-                {result?.processed === 0 ? (
-                  <div className="mt-2 text-sm text-muted-foreground bg-blue-50 p-2 rounded">
-                    Użyj menu "Akcje" → "Przetwórz stronę" aby pobrać
-                    użytkowników WordPress
-                  </div>
-                ) : processingWebsite ? (
-                  <div className="flex items-center gap-2 mt-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-muted-foreground">
-                      Przetwarzanie strony...
-                    </span>
-                  </div>
-                ) : wpUsers.length > 0 ? (
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {wpUsers.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center gap-3 p-2 border rounded-lg bg-muted/30"
-                      >
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{user.name}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>ID: {user.wp_user_id}</span>
-                            {user.slug && (
-                              <>
-                                <span>•</span>
-                                <span>Login: {user.slug}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : result?.wp_fetch_status === "success" ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Pobieranie zakończone sukcesem, ale nie znaleziono
-                    użytkowników
-                  </p>
-                ) : result?.wp_fetch_status === "no_users" ? (
-                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800 font-medium">
-                      Brak użytkowników WordPress
-                    </p>
-                    <p className="text-xs text-yellow-700 mt-1">
-                      {result.wp_fetch_error ||
-                        "Endpoint WordPress dostępny, ale nie znaleziono użytkowników"}
-                    </p>
-                    {result.wp_fetch_attempted_at && (
-                      <p className="text-xs text-yellow-600 mt-1">
-                        Sprawdzono:{" "}
-                        {new Date(result.wp_fetch_attempted_at).toLocaleString(
-                          "pl-PL"
-                        )}
-                      </p>
-                    )}
-                  </div>
-                ) : result?.wp_fetch_status === "not_wordpress" ? (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800 font-medium">
-                      Nie jest stroną WordPress
-                    </p>
-                    <p className="text-xs text-blue-700 mt-1">
-                      {result.wp_fetch_error ||
-                        "Endpoint /wp-json/wp/v2/users nie istnieje"}
-                    </p>
-                    {result.wp_fetch_attempted_at && (
-                      <p className="text-xs text-blue-600 mt-1">
-                        Sprawdzono:{" "}
-                        {new Date(result.wp_fetch_attempted_at).toLocaleString(
-                          "pl-PL"
-                        )}
-                      </p>
-                    )}
-                  </div>
-                ) : result?.wp_fetch_status === "error" ? (
-                  <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-800 font-medium">
-                      Błąd podczas pobierania
-                    </p>
-                    <p className="text-xs text-red-700 mt-1">
-                      {result.wp_fetch_error ||
-                        "Wystąpił nieznany błąd podczas pobierania użytkowników"}
-                    </p>
-                    {result.wp_fetch_attempted_at && (
-                      <p className="text-xs text-red-600 mt-1">
-                        Ostatnia próba:{" "}
-                        {new Date(result.wp_fetch_attempted_at).toLocaleString(
-                          "pl-PL"
-                        )}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Brak dostępnych użytkowników WordPress
-                  </p>
-                )}
-              </div>
             </CardContent>
           </Card>
         </div>
@@ -443,21 +311,6 @@ export default function SearchResultDetailsPage() {
                   {result.processed === 1 ? "Przetworzony" : "Nieprzetworzony"}
                 </Badge>
               </div>
-
-              {result.meta_generator && result.meta_generator.length > 0 && (
-                <div>
-                  <span className="text-sm text-muted-foreground">
-                    Generator:
-                  </span>
-                  <div className="mt-1 space-y-1">
-                    {result.meta_generator.map((generator, index) => (
-                      <Badge key={index} variant="outline" className="mr-1">
-                        {generator}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -487,19 +340,6 @@ export default function SearchResultDetailsPage() {
                 <p className="text-sm">
                   {result.search_date
                     ? new Date(result.search_date).toLocaleString("pl-PL")
-                    : "Brak danych"}
-                </p>
-              </div>
-
-              <div>
-                <span className="text-sm text-muted-foreground">
-                  Ostatnia próba przetwarzania WP:
-                </span>
-                <p className="text-sm">
-                  {result.wp_fetch_attempted_at
-                    ? new Date(result.wp_fetch_attempted_at).toLocaleString(
-                        "pl-PL"
-                      )
                     : "Brak danych"}
                 </p>
               </div>

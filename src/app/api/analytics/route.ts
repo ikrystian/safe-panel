@@ -71,22 +71,13 @@ export async function GET(request: NextRequest) {
       GROUP BY wp_fetch_status
     `).all(userId) as { wp_fetch_status: string; count: number }[];
 
-    // Total WordPress users found
-    const totalWpUsers = db.prepare(`
-      SELECT COUNT(*) as count
-      FROM wordpress_users wu
-      JOIN history_scrapped hs ON wu.search_result_id = hs.id
-      WHERE hs.user_id = ?
-    `).get(userId) as { count: number };
-
     // Error statistics
     const errorStats = db.prepare(`
       SELECT 
-        COUNT(*) as total_with_errors,
-        COUNT(CASE WHEN errors LIKE '%wordpress_users%' THEN 1 END) as wp_user_errors
+        COUNT(*) as total_with_errors
       FROM history_scrapped 
       WHERE user_id = ? AND errors IS NOT NULL
-    `).get(userId) as { total_with_errors: number; wp_user_errors: number };
+    `).get(userId) as { total_with_errors: number };
 
     // Pagination statistics
     const paginationStats = db.prepare(`
@@ -116,7 +107,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       overview: {
         totalResults,
-        totalWpUsers: totalWpUsers.count,
         totalQueries: paginationStats.total_queries || 0,
         totalRequests: paginationStats.total_requests || 0,
       },

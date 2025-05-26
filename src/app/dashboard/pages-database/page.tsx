@@ -30,11 +30,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { AddPageDialog } from "@/components/add-page-dialog";
 import {
   Search,
@@ -96,6 +91,9 @@ export default function PagesDatabasePage() {
   >([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [queryToDelete, setQueryToDelete] = useState<string | null>(null);
+  const [activeHistoryItem, setActiveHistoryItem] = useState<string | null>(
+    null
+  );
 
   // Load search history on component mount
   useEffect(() => {
@@ -226,6 +224,7 @@ export default function PagesDatabasePage() {
         setSearchResults(data.results || []);
         setSelectedQuery(query);
         setPaginationState(data.pagination || null);
+        setActiveHistoryItem(query); // Set as active item
 
         // Scroll to the results table after setting the state
         // Use a timeout to ensure the DOM has updated and the table is visible
@@ -265,6 +264,7 @@ export default function PagesDatabasePage() {
           setSearchResults([]);
           setSelectedQuery(null);
           setPaginationState(null);
+          setActiveHistoryItem(null);
         }
       }
     } catch (error) {
@@ -440,18 +440,24 @@ export default function PagesDatabasePage() {
                 return (
                   <div
                     key={item.search_query}
-                    className="flex items-center justify-between p-3 border rounded-lg bg-muted/50 history-group-item"
+                    className={`flex items-center justify-between p-3 border rounded-lg history-group-item transition-colors cursor-pointer ${
+                      activeHistoryItem === item.search_query
+                        ? "bg-primary/10 border-primary/30 shadow-sm"
+                        : "bg-muted/50 hover:bg-muted/70"
+                    }`}
+                    onClick={() => loadHistoryResults(item.search_query)}
                   >
                     <div className="flex flex-col gap-1 flex-1">
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => loadHistoryResults(item.search_query)}
-                          className="text-left p-0 h-auto font-medium"
+                        <span
+                          className={`text-left font-medium ${
+                            activeHistoryItem === item.search_query
+                              ? "text-primary"
+                              : ""
+                          }`}
                         >
                           {item.search_query}
-                        </Button>
+                        </span>
                         <Badge variant="secondary">{item.count} wyników</Badge>
                       </div>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -479,7 +485,10 @@ export default function PagesDatabasePage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => loadHistoryResults(item.search_query)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          loadHistoryResults(item.search_query);
+                        }}
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         Pokaż wyniki
@@ -488,7 +497,10 @@ export default function PagesDatabasePage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteClick(item.search_query)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(item.search_query);
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -544,11 +556,10 @@ export default function PagesDatabasePage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-32"></TableHead>
+                  <TableHead className="w-32">Data</TableHead>
                   <TableHead>Link</TableHead>
                   <TableHead>Tytuł</TableHead>
-                  <TableHead>Opis</TableHead>
-                  <TableHead className="w-32">Status</TableHead>
-                  <TableHead className="w-32">Data</TableHead>
                   <TableHead className="w-32">Akcje</TableHead>
                 </TableRow>
               </TableHeader>
@@ -562,22 +573,6 @@ export default function PagesDatabasePage() {
                       router.push(`/dashboard/pages-database/${result.id}`)
                     }
                   >
-                    <TableCell className="max-w-xs">
-                      <div className="truncate">{result.link}</div>
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <div className="truncate" title={result.title}>
-                        {result.title || "Brak tytułu"}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-md">
-                      <div
-                        className="text-sm text-muted-foreground line-clamp-2"
-                        title={result.snippet}
-                      >
-                        {result.snippet || "Brak opisu"}
-                      </div>
-                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {result.processed === 1 ? (
@@ -585,38 +580,6 @@ export default function PagesDatabasePage() {
                         ) : (
                           <X className="h-4 w-4" />
                         )}
-                        {(() => {
-                          const wpUserErrors = getWordPressUserErrors(
-                            result.errors || null
-                          );
-                          if (wpUserErrors.length > 0) {
-                            return (
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <User className="h-4 w-4 text-red-500" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <div className="max-w-xs">
-                                    <p className="font-medium mb-1">
-                                      Błędy użytkowników WordPress:
-                                    </p>
-                                    {wpUserErrors.map((error, idx) => (
-                                      <div key={idx} className="text-xs mb-1">
-                                        <p>{error.message}</p>
-                                        <p className="text-muted-foreground">
-                                          {new Date(
-                                            error.timestamp
-                                          ).toLocaleString("pl-PL")}
-                                        </p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            );
-                          }
-                          return null;
-                        })()}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -626,6 +589,15 @@ export default function PagesDatabasePage() {
                           )
                         : ""}
                     </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate">{result.link}</div>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={result.title}>
+                        {result.title || "Brak tytułu"}
+                      </div>
+                    </TableCell>
+
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button

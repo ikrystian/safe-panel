@@ -26,10 +26,7 @@ export async function GET(
       return NextResponse.json({ error: 'Result not found' }, { status: 404 });
     }
 
-    // Get WordPress users for this result
-    const wpUsers = searchResultsRepo.getWordPressUsersBySearchResultId(id);
-
-    return NextResponse.json({ result, wpUsers });
+    return NextResponse.json({ result });
 
   } catch (error) {
     console.error('Search result API error:', error);

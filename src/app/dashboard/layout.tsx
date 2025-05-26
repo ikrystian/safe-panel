@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
-import { Home, BarChart3, Settings, Bell, Database } from "lucide-react";
+import { Home, Settings, Bell, Database } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -18,7 +18,6 @@ import {
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Sites", href: "/dashboard/pages-database", icon: Database },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
