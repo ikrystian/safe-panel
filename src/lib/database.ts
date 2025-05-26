@@ -61,6 +61,18 @@ function initializeTables() {
     )
   `);
 
+  // Create wordpress_users table to store fetched WordPress users
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS wordpress_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      search_result_id INTEGER NOT NULL,
+      wp_user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (search_result_id) REFERENCES history_scrapped (id) ON DELETE CASCADE
+    )
+  `);
+
   // Add processed column if it doesn't exist (for existing databases)
   try {
     db.exec(`ALTER TABLE history_scrapped ADD COLUMN processed INTEGER DEFAULT 0`);
@@ -75,12 +87,32 @@ function initializeTables() {
     // Column already exists, ignore error
   }
 
+  // Add WordPress fetch status columns if they don't exist (for existing databases)
+  try {
+    db.exec(`ALTER TABLE history_scrapped ADD COLUMN wp_fetch_status TEXT DEFAULT NULL`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  try {
+    db.exec(`ALTER TABLE history_scrapped ADD COLUMN wp_fetch_error TEXT DEFAULT NULL`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  try {
+    db.exec(`ALTER TABLE history_scrapped ADD COLUMN wp_fetch_attempted_at DATETIME DEFAULT NULL`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
   // Create index for better performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_search_query ON history_scrapped(search_query);
     CREATE INDEX IF NOT EXISTS idx_search_date ON history_scrapped(search_date);
     CREATE INDEX IF NOT EXISTS idx_user_id ON history_scrapped(user_id);
     CREATE INDEX IF NOT EXISTS idx_pagination_query_user ON search_pagination(search_query, user_id);
+    CREATE INDEX IF NOT EXISTS idx_wp_users_search_result ON wordpress_users(search_result_id);
   `);
 }
 
@@ -97,6 +129,9 @@ export interface SearchResult {
   processed?: number;
   category?: number;
   created_at?: string;
+  wp_fetch_status?: string | null;
+  wp_fetch_error?: string | null;
+  wp_fetch_attempted_at?: string | null;
 }
 
 export interface SearchPagination {
@@ -106,6 +141,14 @@ export interface SearchPagination {
   last_start_position: number;
   total_requests_made: number;
   last_updated?: string;
+}
+
+export interface WordPressUser {
+  id?: number;
+  search_result_id: number;
+  wp_user_id: number;
+  name: string;
+  created_at?: string;
 }
 
 export class SearchResultsRepository {
@@ -305,6 +348,67 @@ export class SearchResultsRepository {
       ORDER BY last_updated DESC
     `);
     return stmt.all(userId) as SearchPagination[];
+  }
+
+  // WordPress Users methods
+  insertWordPressUsers(users: WordPressUser[]): void {
+    const stmt = this.db.prepare(`
+      INSERT INTO wordpress_users (
+        search_result_id, wp_user_id, name
+      ) VALUES (?, ?, ?)
+    `);
+
+    const insertMany = this.db.transaction((users: WordPressUser[]) => {
+      for (const user of users) {
+        stmt.run(
+          user.search_result_id,
+          user.wp_user_id,
+          user.name
+        );
+      }
+    });
+
+    insertMany(users);
+  }
+
+  getWordPressUsersBySearchResultId(searchResultId: number): WordPressUser[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM wordpress_users
+      WHERE search_result_id = ?
+      ORDER BY name ASC
+    `);
+    return stmt.all(searchResultId) as WordPressUser[];
+  }
+
+  deleteWordPressUsersBySearchResultId(searchResultId: number): void {
+    const stmt = this.db.prepare(`
+      DELETE FROM wordpress_users
+      WHERE search_result_id = ?
+    `);
+    stmt.run(searchResultId);
+  }
+
+  hasWordPressUsers(searchResultId: number): boolean {
+    const stmt = this.db.prepare(`
+      SELECT COUNT(*) as count FROM wordpress_users
+      WHERE search_result_id = ?
+    `);
+    const result = stmt.get(searchResultId) as { count: number };
+    return result.count > 0;
+  }
+
+  // Update WordPress fetch status
+  updateWordPressFetchStatus(
+    searchResultId: number,
+    status: 'success' | 'error' | 'no_users' | 'not_wordpress',
+    error?: string
+  ): void {
+    const stmt = this.db.prepare(`
+      UPDATE history_scrapped
+      SET wp_fetch_status = ?, wp_fetch_error = ?, wp_fetch_attempted_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    stmt.run(status, error || null, searchResultId);
   }
 }
 

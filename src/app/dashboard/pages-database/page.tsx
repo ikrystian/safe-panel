@@ -233,7 +233,7 @@ export default function PagesDatabasePage() {
     }
   };
 
-  const updateProcessedStatus = async (id: number, processed: number) => {
+  const processWebsite = async (id: number, processed: number) => {
     try {
       const response = await fetch("/api/search", {
         method: "PATCH",
@@ -535,7 +535,7 @@ export default function PagesDatabasePage() {
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          updateProcessedStatus(
+                          processWebsite(
                             result.id!,
                             result.processed === 1 ? 0 : 1
                           )
@@ -579,7 +579,7 @@ export default function PagesDatabasePage() {
                         </Button>
                         <Button variant="ghost" size="sm" asChild>
                           <a
-                            href={"https://" + result.link}
+                            href={"http://" + result.link}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}

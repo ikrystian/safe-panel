@@ -5,12 +5,125 @@ import { searchResultsRepo, SearchResult } from '@/lib/database';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { GoogleSearch } = require('google-search-results-nodejs');
 
+// Fetch and save WordPress users
+async function fetchAndSaveWordPressUsers(searchResultId: number, link: string): Promise<void> {
+  try {
+    // Check if users already exist for this result
+    if (searchResultsRepo.hasWordPressUsers(searchResultId)) {
+      console.log(`WordPress users already exist for result ${searchResultId}`);
+      return;
+    }
+
+    const wpApiUrl = `${link}/wp-json/wp/v2/users`;
+
+    console.log(`Fetching WordPress users from: ${wpApiUrl}`);
+
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    const response = await fetch(wpApiUrl, {
+      headers: {
+        'User-Agent': 'Safe-Panel/1.0'
+      },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const users = await response.json();
+
+      if (Array.isArray(users) && users.length > 0) {
+        const wpUsers = users.map(user => ({
+          search_result_id: searchResultId,
+          wp_user_id: user.id,
+          name: user.name || 'Unknown'
+        }));
+
+        searchResultsRepo.insertWordPressUsers(wpUsers);
+        searchResultsRepo.updateWordPressFetchStatus(searchResultId, 'success');
+        console.log(`Saved ${wpUsers.length} WordPress users for result ${searchResultId}`);
+      } else {
+        searchResultsRepo.updateWordPressFetchStatus(
+          searchResultId,
+          'no_users',
+          'Endpoint WordPress dostępny, ale nie znaleziono użytkowników'
+        );
+        console.log(`No WordPress users found for ${link}`);
+      }
+    } else if (response.status === 404) {
+      searchResultsRepo.updateWordPressFetchStatus(
+        searchResultId,
+        'not_wordpress',
+        'Endpoint /wp-json/wp/v2/users nie istnieje - prawdopodobnie nie jest to strona WordPress'
+      );
+      console.log(`WordPress API not found for ${link} - not a WordPress site`);
+    } else {
+      searchResultsRepo.updateWordPressFetchStatus(
+        searchResultId,
+        'error',
+        `Błąd HTTP ${response.status}: ${response.statusText}`
+      );
+      console.log(`Failed to fetch WordPress users from ${link}: ${response.status}`);
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      searchResultsRepo.updateWordPressFetchStatus(
+        searchResultId,
+        'error',
+        'Przekroczono limit czasu połączenia (10s)'
+      );
+    } else if (errorMessage.includes('timeout') || errorMessage.includes('TIMEOUT')) {
+      searchResultsRepo.updateWordPressFetchStatus(
+        searchResultId,
+        'error',
+        'Przekroczono limit czasu połączenia (10s)'
+      );
+    } else if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('DNS')) {
+      searchResultsRepo.updateWordPressFetchStatus(
+        searchResultId,
+        'error',
+        'Nie można znaleźć domeny (błąd DNS)'
+      );
+    } else if (errorMessage.includes('ECONNREFUSED')) {
+      searchResultsRepo.updateWordPressFetchStatus(
+        searchResultId,
+        'error',
+        'Połączenie odrzucone przez serwer'
+      );
+    } else if (errorMessage.includes('certificate') || errorMessage.includes('SSL')) {
+      searchResultsRepo.updateWordPressFetchStatus(
+        searchResultId,
+        'error',
+        'Błąd certyfikatu SSL'
+      );
+    } else {
+      searchResultsRepo.updateWordPressFetchStatus(
+        searchResultId,
+        'error',
+        `Błąd połączenia: ${errorMessage}`
+      );
+    }
+
+    console.error('Error fetching WordPress users:', error);
+  }
+}
+
 // Extract domain from URL
 function extractDomain(url: string): string {
   try {
     const urlObj = new URL(url);
-    return urlObj.hostname.replace(/^www\./, '');
+    const hostname = urlObj.hostname.replace(/^www\./, '');
+    const protocol = urlObj.protocol; // http: or https:
+    return `${protocol}//${hostname}`;
   } catch (error) {
+    // If URL parsing fails, try to add protocol if missing
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return `https://${url}`;
+    }
     return url;
   }
 }
@@ -242,7 +355,16 @@ export async function PATCH(request: NextRequest) {
     if (id !== undefined && processed !== undefined) {
       // Update specific result by ID
       searchResultsRepo.updateProcessedStatus(id, processed);
-      return NextResponse.json({ success: true, message: 'Processed status updated' });
+
+      // If setting to processed (1), fetch WordPress users
+      if (processed === 1) {
+        const result = searchResultsRepo.getSearchResultById(id, userId);
+        if (result?.link) {
+          await fetchAndSaveWordPressUsers(id, result.link);
+        }
+      }
+
+      return NextResponse.json({ success: true, message: 'Website processed successfully' });
     } else if (query && processed !== undefined) {
       // Update all results for a query
       searchResultsRepo.updateProcessedStatusByQuery(query, processed, userId);

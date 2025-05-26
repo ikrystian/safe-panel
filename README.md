@@ -48,6 +48,9 @@ history_scrapped {
   processed: integer (default 0)
   category: integer (default 0)
   created_at: datetime (default current_timestamp)
+  wp_fetch_status: text (default null) -- 'success', 'error', 'no_users', 'not_wordpress'
+  wp_fetch_error: text (default null) -- detailed error message
+  wp_fetch_attempted_at: datetime (default null) -- when fetch was attempted
 }
 
 search_pagination {
@@ -58,6 +61,14 @@ search_pagination {
   total_requests_made: integer (default 0)
   last_updated: datetime (default current_timestamp)
   UNIQUE(search_query, user_id)
+}
+
+wordpress_users {
+  id: integer (primary key, autoincrement)
+  search_result_id: integer (not null, foreign key)
+  wp_user_id: integer (not null)
+  name: text (not null)
+  created_at: datetime (default current_timestamp)
 }
 ```
 
@@ -203,10 +214,36 @@ Each search result can be viewed in detail:
 
 - **Clickable Rows**: Click any row in the results table to view detailed information
 - **Detailed View Page**: Dedicated page showing all result metadata
-- **Status Management**: Toggle processed status directly from the detail view
-- **External Links**: Quick access to the original webpage
+- **Website Processing**: Process website status with `processWebsite` function
+- **WordPress Users**: Automatically fetches and displays WordPress users from the website
+- **User Information**: Shows name, login (slug), description, and avatar for each user
+- **External Links**: Quick access to the original webpage and user profiles
 - **Metadata Display**: Shows ID, position, category, dates, and more
 - **Navigation**: Easy return to the main results table
+
+### WordPress Integration
+
+The application fetches and stores WordPress user data when processing websites:
+
+- **On-Demand Fetching**: Users are fetched only when clicking "Przetwórz stronę" button
+- **Database Storage**: WordPress users are stored in the database for fast access
+- **REST API**: Uses `/wp-json/wp/v2/users` endpoint to fetch user data
+- **User Data**: Stores WordPress user ID and name only (simplified structure)
+- **Advanced Error Handling**: Detailed error tracking and reporting with specific error messages
+- **Error Status Tracking**: Records fetch status ('success', 'error', 'no_users', 'not_wordpress')
+- **Error Details**: Stores specific error messages for different failure scenarios:
+  - DNS resolution errors
+  - Connection timeouts (10s limit)
+  - SSL certificate issues
+  - HTTP status errors
+  - Non-WordPress sites detection
+- **Visual Error Display**: Color-coded error messages in the interface:
+  - 🟡 Yellow: No users found but WordPress detected
+  - 🔵 Blue: Not a WordPress site
+  - 🔴 Red: Connection or technical errors
+- **Timestamp Tracking**: Records when fetch attempts were made
+- **Persistent Storage**: Users and error information saved to database
+- **Minimal Data**: Only essential information is stored for better performance
 
 ## Contributing
 

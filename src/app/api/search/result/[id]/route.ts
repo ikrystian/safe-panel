@@ -4,7 +4,7 @@ import { searchResultsRepo } from '@/lib/database';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -13,19 +13,23 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
     // Get result by ID
     const result = searchResultsRepo.getSearchResultById(id, userId);
-    
+
     if (!result) {
       return NextResponse.json({ error: 'Result not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ result });
+    // Get WordPress users for this result
+    const wpUsers = searchResultsRepo.getWordPressUsersBySearchResultId(id);
+
+    return NextResponse.json({ result, wpUsers });
 
   } catch (error) {
     console.error('Search result API error:', error);

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SAFEr",
+  title: "SAFE",
   description: "Fake in until make it",
 };
 
