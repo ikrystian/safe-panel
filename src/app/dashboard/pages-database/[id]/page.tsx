@@ -26,6 +26,9 @@ import {
   Settings,
   RefreshCw,
   Eye,
+  Clock,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
 interface SearchResult {
@@ -77,44 +80,98 @@ export default function SearchResultDetailsPage() {
     }
   };
 
-  const processWebsite = async (processed: number) => {
+  const processWebsite = async () => {
     if (!result?.id || !result?.link) return;
 
     try {
       setProcessingWebsite(true);
 
-      // Send POST request to external scan service
-      const scanResponse = await fetch("http://localhost:4000/scan", {
-        method: "POST",
+      // Set status to "w trakcie" (1) first
+      const startResponse = await fetch("/api/search", {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          url: result.link,
-          callbackUrl: "http://localhost:3000/save",
-        }),
+        body: JSON.stringify({ id: result.id, processed: 1 }),
       });
 
-      if (scanResponse.ok) {
-        console.log("Scan request sent successfully");
+      if (startResponse.ok) {
+        setResult((prev) => (prev ? { ...prev, processed: 1 } : null));
+      }
 
-        // Update the processed status in our database
-        const response = await fetch("/api/search", {
+      try {
+        // Send POST request to external scan service with timeout
+        const controller = new AbortController();
+
+        const scanResponse = await fetch("http://localhost:4000/scan", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            url: result.link,
+            callbackUrl: "http://localhost:3000/save",
+          }),
+          signal: controller.signal,
+        });
+
+        if (scanResponse.ok) {
+          console.log("Scan request sent successfully");
+          // Status will be updated by callback to 2 (zakończone) or 3 (błąd)
+        } else {
+          console.error("Failed to send scan request:", scanResponse.status);
+          throw new Error(
+            `HTTP ${scanResponse.status}: ${scanResponse.statusText}`
+          );
+        }
+      } catch (scanError) {
+        console.error("Error connecting to scan service:", scanError);
+
+        let errorMessage = "Błąd połączenia ze skanerem";
+        if (scanError instanceof Error) {
+          if (scanError.name === "AbortError") {
+            errorMessage = "Przekroczono limit czasu połączenia (10s)";
+          } else if (scanError.message.includes("fetch")) {
+            errorMessage = "Skaner niedostępny (http://localhost:4000)";
+          } else {
+            errorMessage = scanError.message;
+          }
+        }
+
+        // Set status to error (3)
+        const errorResponse = await fetch("/api/search", {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ id: result.id, processed }),
+          body: JSON.stringify({ id: result.id, processed: 3 }),
         });
 
-        if (response.ok) {
-          setResult((prev) => (prev ? { ...prev, processed } : null));
+        if (errorResponse.ok) {
+          setResult((prev) => (prev ? { ...prev, processed: 3 } : null));
         }
-      } else {
-        console.error("Failed to send scan request:", scanResponse.status);
+
+        // Show user-friendly error message
+        alert(`Błąd przetwarzania: ${errorMessage}`);
       }
     } catch (error) {
       console.error("Error processing website:", error);
+      // Set status to error (3)
+      try {
+        const errorResponse = await fetch("/api/search", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: result.id, processed: 3 }),
+        });
+
+        if (errorResponse.ok) {
+          setResult((prev) => (prev ? { ...prev, processed: 3 } : null));
+        }
+      } catch (updateError) {
+        console.error("Error updating status to error:", updateError);
+      }
     } finally {
       setProcessingWebsite(false);
     }
@@ -177,7 +234,13 @@ export default function SearchResultDetailsPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant={result.processed === 1 ? "default" : "outline"}
+                variant={
+                  result.processed === 2
+                    ? "default"
+                    : result.processed === 3
+                    ? "destructive"
+                    : "outline"
+                }
                 disabled={processingWebsite}
               >
                 {processingWebsite ? (
@@ -185,10 +248,24 @@ export default function SearchResultDetailsPage() {
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Przetwarzanie...
                   </>
+                ) : result.processed === 0 ? (
+                  <>
+                    <X className="h-4 w-4 mr-2" />
+                    Nieprzetworzone
+                  </>
                 ) : result.processed === 1 ? (
                   <>
+                    <Clock className="h-4 w-4 mr-2" />W trakcie
+                  </>
+                ) : result.processed === 2 ? (
+                  <>
                     <Check className="h-4 w-4 mr-2" />
-                    Akcje
+                    Zakończone
+                  </>
+                ) : result.processed === 3 ? (
+                  <>
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Błąd
                   </>
                 ) : (
                   <>
@@ -200,7 +277,7 @@ export default function SearchResultDetailsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => processWebsite(1)}>
+              <DropdownMenuItem onClick={() => processWebsite()}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Przetwórz stronę
               </DropdownMenuItem>
@@ -324,9 +401,25 @@ export default function SearchResultDetailsPage() {
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Status:</span>
                 <Badge
-                  variant={result.processed === 1 ? "default" : "secondary"}
+                  variant={
+                    result.processed === 2
+                      ? "default"
+                      : result.processed === 3
+                      ? "destructive"
+                      : result.processed === 1
+                      ? "secondary"
+                      : "outline"
+                  }
                 >
-                  {result.processed === 1 ? "Przetworzony" : "Nieprzetworzony"}
+                  {result.processed === 0
+                    ? "Nieprzetworzone"
+                    : result.processed === 1
+                    ? "W trakcie"
+                    : result.processed === 2
+                    ? "Zakończone"
+                    : result.processed === 3
+                    ? "Błąd"
+                    : "Nieznany"}
                 </Badge>
               </div>
             </CardContent>

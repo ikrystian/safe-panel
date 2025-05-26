@@ -9,6 +9,29 @@ const PORT = process.env.PORT || 4000;
 const CONTAINER_NAME = "wpscan-persistent";
 let containerReady = false;
 
+// CORS middleware to accept requests from localhost:3000
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+
+  // Log incoming requests for debugging
+  console.log(
+    `${req.method} ${req.path} - Origin: ${req.get("Origin") || "No Origin"}`
+  );
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    console.log("Handling preflight request");
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 // Middleware do parsowania JSON
 app.use(express.json());
 

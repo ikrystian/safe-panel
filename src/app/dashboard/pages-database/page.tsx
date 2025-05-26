@@ -42,6 +42,8 @@ import {
   X,
   Eye,
   User,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 
 interface SearchResult {
@@ -574,11 +576,17 @@ export default function PagesDatabasePage() {
                     }
                   >
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {result.processed === 1 ? (
-                          <Check className="h-4 w-4" />
+                      <div className="flex items-center justify-center">
+                        {result.processed === 0 ? (
+                          <X className="h-4 w-4 text-gray-400" />
+                        ) : result.processed === 1 ? (
+                          <Clock className="h-4 w-4 text-blue-500" />
+                        ) : result.processed === 2 ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : result.processed === 3 ? (
+                          <AlertCircle className="h-4 w-4 text-red-500" />
                         ) : (
-                          <X className="h-4 w-4" />
+                          <X className="h-4 w-4 text-gray-400" />
                         )}
                       </div>
                     </TableCell>

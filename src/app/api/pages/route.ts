@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       position: undefined,
       user_id: userId,
       serpapi_position: undefined,
-      processed: 0, // Start as unprocessed
+      processed: 0, // 0 = nieprzetworzone, 1 = w trakcie, 2 = zakończone, 3 = błąd
       category: category || 2, // Default category 2 for manual entries
     };
 
