@@ -51,6 +51,7 @@ history_scrapped {
   wp_fetch_status: text (default null) -- 'success', 'error', 'no_users', 'not_wordpress'
   wp_fetch_error: text (default null) -- detailed error message
   wp_fetch_attempted_at: datetime (default null) -- when fetch was attempted
+  errors: text (default null) -- serialized JSON array of errors
 }
 
 search_pagination {
@@ -232,17 +233,21 @@ The application fetches and stores WordPress user data when processing websites:
 - **User Data**: Stores WordPress user ID and name only (simplified structure)
 - **Advanced Error Handling**: Detailed error tracking and reporting with specific error messages
 - **Error Status Tracking**: Records fetch status ('success', 'error', 'no_users', 'not_wordpress')
+- **Serialized Error Storage**: Stores detailed error information in JSON format in `errors` field
 - **Error Details**: Stores specific error messages for different failure scenarios:
   - DNS resolution errors
   - Connection timeouts (10s limit)
   - SSL certificate issues
   - HTTP status errors
   - Non-WordPress sites detection
-- **Visual Error Display**: Color-coded error messages in the interface:
-  - 🟡 Yellow: No users found but WordPress detected
-  - 🔵 Blue: Not a WordPress site
-  - 🔴 Red: Connection or technical errors
-- **Timestamp Tracking**: Records when fetch attempts were made
+- **Visual Error Display**:
+  - Color-coded error messages in detail view:
+    - 🟡 Yellow: No users found but WordPress detected
+    - 🔵 Blue: Not a WordPress site
+    - 🔴 Red: Connection or technical errors
+  - Red user icon (👤) in results table with tooltip showing error details
+- **Error Tooltips**: Hover over red user icon to see detailed error information with timestamps
+- **Timestamp Tracking**: Records when fetch attempts were made and when errors occurred
 - **Persistent Storage**: Users and error information saved to database
 - **Minimal Data**: Only essential information is stored for better performance
 

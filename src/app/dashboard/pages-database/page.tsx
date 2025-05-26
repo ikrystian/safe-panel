@@ -31,6 +31,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Search,
   Database,
   ExternalLink,
@@ -40,6 +45,7 @@ import {
   Check,
   X,
   Eye,
+  User,
 } from "lucide-react";
 
 interface SearchResult {
@@ -55,6 +61,7 @@ interface SearchResult {
   processed?: number;
   category?: number;
   created_at?: string;
+  errors?: string | null;
 }
 
 interface SearchHistory {
@@ -277,6 +284,22 @@ export default function PagesDatabasePage() {
     } catch (error) {
       console.error("Error updating processed status:", error);
     }
+  };
+
+  // Parse errors from JSON string
+  const parseErrors = (errorsString: string | null): any[] => {
+    if (!errorsString) return [];
+    try {
+      return JSON.parse(errorsString);
+    } catch (e) {
+      return [];
+    }
+  };
+
+  // Get WordPress user errors
+  const getWordPressUserErrors = (errorsString: string | null): any[] => {
+    const errors = parseErrors(errorsString);
+    return errors.filter((error) => error.type === "wordpress_users");
   };
 
   return (
@@ -522,6 +545,7 @@ export default function PagesDatabasePage() {
                   <TableHead>Tytuł</TableHead>
                   <TableHead>Opis</TableHead>
                   <TableHead className="w-24">Processed</TableHead>
+                  <TableHead className="w-20">Błędy</TableHead>
                   <TableHead className="w-32">Data</TableHead>
                   <TableHead className="w-32">Akcje</TableHead>
                 </TableRow>
@@ -575,6 +599,40 @@ export default function PagesDatabasePage() {
                           <X className="h-4 w-4" />
                         )}
                       </Button>
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const wpUserErrors = getWordPressUserErrors(
+                          result.errors || null
+                        );
+                        if (wpUserErrors.length > 0) {
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <User className="h-4 w-4 text-red-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="max-w-xs">
+                                  <p className="font-medium mb-1">
+                                    Błędy użytkowników WordPress:
+                                  </p>
+                                  {wpUserErrors.map((error, idx) => (
+                                    <div key={idx} className="text-xs mb-1">
+                                      <p>{error.message}</p>
+                                      <p className="text-muted-foreground">
+                                        {new Date(
+                                          error.timestamp
+                                        ).toLocaleString("pl-PL")}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        }
+                        return null;
+                      })()}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {result.created_at

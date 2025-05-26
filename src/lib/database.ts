@@ -113,6 +113,13 @@ function initializeTables() {
     // Column already exists, ignore error
   }
 
+  // Add errors column to history_scrapped if it doesn't exist (for existing databases)
+  try {
+    db.exec(`ALTER TABLE history_scrapped ADD COLUMN errors TEXT DEFAULT NULL`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
   // Create index for better performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_search_query ON history_scrapped(search_query);
@@ -139,6 +146,7 @@ export interface SearchResult {
   wp_fetch_status?: string | null;
   wp_fetch_error?: string | null;
   wp_fetch_attempted_at?: string | null;
+  errors?: string | null;
 }
 
 export interface SearchPagination {
@@ -418,6 +426,37 @@ export class SearchResultsRepository {
       WHERE id = ?
     `);
     stmt.run(status, error || null, searchResultId);
+  }
+
+  // Add error to the errors field (serialized JSON)
+  addError(searchResultId: number, errorType: string, errorMessage: string): void {
+    // Get current errors
+    const getStmt = this.db.prepare(`SELECT errors FROM history_scrapped WHERE id = ?`);
+    const result = getStmt.get(searchResultId) as { errors: string | null };
+
+    let errors: any[] = [];
+    if (result.errors) {
+      try {
+        errors = JSON.parse(result.errors);
+      } catch (e) {
+        errors = [];
+      }
+    }
+
+    // Add new error
+    errors.push({
+      type: errorType,
+      message: errorMessage,
+      timestamp: new Date().toISOString()
+    });
+
+    // Update errors field
+    const updateStmt = this.db.prepare(`
+      UPDATE history_scrapped
+      SET errors = ?
+      WHERE id = ?
+    `);
+    updateStmt.run(JSON.stringify(errors), searchResultId);
   }
 }
 

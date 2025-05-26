@@ -51,6 +51,7 @@ async function fetchAndSaveWordPressUsers(searchResultId: number, link: string):
           'no_users',
           'Endpoint WordPress dostępny, ale nie znaleziono użytkowników'
         );
+        searchResultsRepo.addError(searchResultId, 'wordpress_users', 'Brak użytkowników WordPress na stronie');
         console.log(`No WordPress users found for ${link}`);
       }
     } else if (response.status === 404) {
@@ -59,54 +60,45 @@ async function fetchAndSaveWordPressUsers(searchResultId: number, link: string):
         'not_wordpress',
         'Endpoint /wp-json/wp/v2/users nie istnieje - prawdopodobnie nie jest to strona WordPress'
       );
+      searchResultsRepo.addError(searchResultId, 'wordpress_users', 'Strona nie jest oparta na WordPress');
       console.log(`WordPress API not found for ${link} - not a WordPress site`);
     } else {
+      const errorMsg = `Błąd HTTP ${response.status}: ${response.statusText}`;
       searchResultsRepo.updateWordPressFetchStatus(
         searchResultId,
         'error',
-        `Błąd HTTP ${response.status}: ${response.statusText}`
+        errorMsg
       );
+      searchResultsRepo.addError(searchResultId, 'wordpress_users', errorMsg);
       console.log(`Failed to fetch WordPress users from ${link}: ${response.status}`);
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
 
     if (error instanceof Error && error.name === 'AbortError') {
-      searchResultsRepo.updateWordPressFetchStatus(
-        searchResultId,
-        'error',
-        'Przekroczono limit czasu połączenia (10s)'
-      );
+      const timeoutMsg = 'Przekroczono limit czasu połączenia (10s)';
+      searchResultsRepo.updateWordPressFetchStatus(searchResultId, 'error', timeoutMsg);
+      searchResultsRepo.addError(searchResultId, 'wordpress_users', timeoutMsg);
     } else if (errorMessage.includes('timeout') || errorMessage.includes('TIMEOUT')) {
-      searchResultsRepo.updateWordPressFetchStatus(
-        searchResultId,
-        'error',
-        'Przekroczono limit czasu połączenia (10s)'
-      );
+      const timeoutMsg = 'Przekroczono limit czasu połączenia (10s)';
+      searchResultsRepo.updateWordPressFetchStatus(searchResultId, 'error', timeoutMsg);
+      searchResultsRepo.addError(searchResultId, 'wordpress_users', timeoutMsg);
     } else if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('DNS')) {
-      searchResultsRepo.updateWordPressFetchStatus(
-        searchResultId,
-        'error',
-        'Nie można znaleźć domeny (błąd DNS)'
-      );
+      const dnsMsg = 'Nie można znaleźć domeny (błąd DNS)';
+      searchResultsRepo.updateWordPressFetchStatus(searchResultId, 'error', dnsMsg);
+      searchResultsRepo.addError(searchResultId, 'wordpress_users', dnsMsg);
     } else if (errorMessage.includes('ECONNREFUSED')) {
-      searchResultsRepo.updateWordPressFetchStatus(
-        searchResultId,
-        'error',
-        'Połączenie odrzucone przez serwer'
-      );
+      const connMsg = 'Połączenie odrzucone przez serwer';
+      searchResultsRepo.updateWordPressFetchStatus(searchResultId, 'error', connMsg);
+      searchResultsRepo.addError(searchResultId, 'wordpress_users', connMsg);
     } else if (errorMessage.includes('certificate') || errorMessage.includes('SSL')) {
-      searchResultsRepo.updateWordPressFetchStatus(
-        searchResultId,
-        'error',
-        'Błąd certyfikatu SSL'
-      );
+      const sslMsg = 'Błąd certyfikatu SSL';
+      searchResultsRepo.updateWordPressFetchStatus(searchResultId, 'error', sslMsg);
+      searchResultsRepo.addError(searchResultId, 'wordpress_users', sslMsg);
     } else {
-      searchResultsRepo.updateWordPressFetchStatus(
-        searchResultId,
-        'error',
-        `Błąd połączenia: ${errorMessage}`
-      );
+      const connErrorMsg = `Błąd połączenia: ${errorMessage}`;
+      searchResultsRepo.updateWordPressFetchStatus(searchResultId, 'error', connErrorMsg);
+      searchResultsRepo.addError(searchResultId, 'wordpress_users', connErrorMsg);
     }
 
     console.error('Error fetching WordPress users:', error);

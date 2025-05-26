@@ -45,6 +45,7 @@ interface SearchResult {
   wp_fetch_status?: string | null;
   wp_fetch_error?: string | null;
   wp_fetch_attempted_at?: string | null;
+  errors?: string | null;
 }
 
 interface WordPressUser {
