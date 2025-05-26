@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -28,6 +29,7 @@ import {
   Loader2,
   Check,
   X,
+  Eye,
 } from "lucide-react";
 
 interface SearchResult {
@@ -51,7 +53,17 @@ interface SearchHistory {
   last_search: string;
 }
 
+interface SearchPagination {
+  id?: number;
+  search_query: string;
+  user_id: string;
+  last_start_position: number;
+  total_requests_made: number;
+  last_updated?: string;
+}
+
 export default function PagesDatabasePage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -59,10 +71,16 @@ export default function PagesDatabasePage() {
   const [selectedQuery, setSelectedQuery] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [paginationState, setPaginationState] =
+    useState<SearchPagination | null>(null);
+  const [allPaginationStates, setAllPaginationStates] = useState<
+    SearchPagination[]
+  >([]);
 
   // Load search history on component mount
   useEffect(() => {
     loadSearchHistory();
+    loadAllPaginationStates();
   }, []);
 
   const loadSearchHistory = async () => {
@@ -78,7 +96,19 @@ export default function PagesDatabasePage() {
     }
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const loadAllPaginationStates = async () => {
+    try {
+      const response = await fetch("/api/search?pagination=true");
+      if (response.ok) {
+        const data = await response.json();
+        setAllPaginationStates(data.paginationStates || []);
+      }
+    } catch (error) {
+      console.error("Error loading pagination states:", error);
+    }
+  };
+
+  const handleSearch = async (e: React.FormEvent, resetPagination = false) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
 
@@ -92,7 +122,10 @@ export default function PagesDatabasePage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query: searchQuery.trim() }),
+        body: JSON.stringify({
+          query: searchQuery.trim(),
+          resetPagination,
+        }),
       });
 
       const data = await response.json();
@@ -100,7 +133,56 @@ export default function PagesDatabasePage() {
       if (response.ok) {
         setSearchResults(data.results || []);
         setSelectedQuery(searchQuery.trim());
+        setPaginationState({
+          search_query: searchQuery.trim(),
+          user_id: "",
+          last_start_position: data.nextStartPosition || 0,
+          total_requests_made: data.totalRequestsMadeOverall || 0,
+        });
         await loadSearchHistory(); // Refresh history
+        await loadAllPaginationStates(); // Refresh pagination states
+      } else {
+        setError(data.error || "Search failed");
+      }
+    } catch (error) {
+      setError("Network error occurred");
+      console.error("Search error:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const continueSearch = async () => {
+    if (!selectedQuery) return;
+
+    setIsSearching(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: selectedQuery,
+          resetPagination: false,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Append new results to existing ones
+        setSearchResults((prev) => [...prev, ...(data.results || [])]);
+        setPaginationState({
+          search_query: selectedQuery,
+          user_id: "",
+          last_start_position: data.nextStartPosition || 0,
+          total_requests_made: data.totalRequestsMadeOverall || 0,
+        });
+        await loadSearchHistory(); // Refresh history
+        await loadAllPaginationStates(); // Refresh pagination states
       } else {
         setError(data.error || "Search failed");
       }
@@ -121,6 +203,7 @@ export default function PagesDatabasePage() {
         const data = await response.json();
         setSearchResults(data.results || []);
         setSelectedQuery(query);
+        setPaginationState(data.pagination || null);
       }
     } catch (error) {
       console.error("Error loading history results:", error);
@@ -142,6 +225,7 @@ export default function PagesDatabasePage() {
         if (selectedQuery === query) {
           setSearchResults([]);
           setSelectedQuery(null);
+          setPaginationState(null);
         }
       }
     } catch (error) {
@@ -262,6 +346,59 @@ export default function PagesDatabasePage() {
         </Card>
       </div>
 
+      {/* Pagination States Overview */}
+      {allPaginationStates.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Status paginacji dla zapytań
+            </CardTitle>
+            <CardDescription>
+              Każde zapytanie ma swój własny stan paginacji - możesz kontynuować
+              wyszukiwanie od miejsca gdzie skończyłeś
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {allPaginationStates.map((state) => (
+                <div
+                  key={state.search_query}
+                  className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
+                >
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium text-sm">
+                      {state.search_query}
+                    </span>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>
+                        Zapytań wykonanych: {state.total_requests_made}
+                      </span>
+                      <span>Następna pozycja: {state.last_start_position}</span>
+                      <span>
+                        Ostatnia aktualizacja:{" "}
+                        {new Date(state.last_updated || "").toLocaleDateString(
+                          "pl-PL"
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => loadHistoryResults(state.search_query)}
+                    >
+                      Pokaż wyniki
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Search History */}
       {searchHistory.length > 0 && (
         <Card>
@@ -316,40 +453,69 @@ export default function PagesDatabasePage() {
             <CardDescription>
               Znaleziono {searchResults.length} wyników (automatycznie
               przetworzonych)
+              {paginationState && (
+                <div className="mt-2 text-sm">
+                  Wykonano {paginationState.total_requests_made} zapytań do API.
+                  Następna pozycja startowa:{" "}
+                  {paginationState.last_start_position}
+                </div>
+              )}
             </CardDescription>
+            {paginationState && (
+              <div className="flex gap-2 mt-4">
+                <Button
+                  onClick={continueSearch}
+                  disabled={isSearching}
+                  variant="outline"
+                  size="sm"
+                >
+                  {isSearching ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Pobieranie...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" />
+                      Kontynuuj wyszukiwanie
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={(e) => handleSearch(e, true)}
+                  disabled={isSearching}
+                  variant="outline"
+                  size="sm"
+                >
+                  Resetuj i zacznij od nowa
+                </Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">Poz.</TableHead>
                   <TableHead>Link</TableHead>
                   <TableHead>Tytuł</TableHead>
                   <TableHead>Opis</TableHead>
                   <TableHead className="w-24">Processed</TableHead>
                   <TableHead className="w-32">Data</TableHead>
-                  <TableHead className="w-16">Akcje</TableHead>
+                  <TableHead className="w-32">Akcje</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {searchResults.map((result, index) => (
-                  <TableRow key={`${result.link}-${index}`}>
-                    <TableCell className="font-medium">
-                      {result.position || index + 1}
-                    </TableCell>
-
+                  <TableRow
+                    key={`${result.link}-${index}`}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() =>
+                      result.id &&
+                      router.push(`/dashboard/pages-database/${result.id}`)
+                    }
+                  >
                     <TableCell className="max-w-xs">
-                      <div className="truncate">
-                        <a
-                          href={result.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                          title={result.link}
-                        >
-                          {result.link}
-                        </a>
-                      </div>
+                      <div className="truncate">{result.link}</div>
                     </TableCell>
                     <TableCell className="max-w-xs">
                       <div className="truncate" title={result.title}>
@@ -396,15 +562,32 @@ export default function PagesDatabasePage() {
                         : ""}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" asChild>
-                        <a
-                          href={result.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            result.id &&
+                              router.push(
+                                `/dashboard/pages-database/${result.id}`
+                              );
+                          }}
+                          disabled={!result.id}
                         >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </Button>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" asChild>
+                          <a
+                            href={"https://" + result.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

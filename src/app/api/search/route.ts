@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { query } = await request.json();
+    const { query, resetPagination = false } = await request.json();
 
     if (!query || typeof query !== 'string') {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
@@ -37,15 +37,25 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
+    // Get or reset pagination state
+    if (resetPagination) {
+      searchResultsRepo.resetPaginationState(query, userId);
+    }
+
+    const paginationState = searchResultsRepo.getPaginationState(query, userId);
+    const startFromPosition = paginationState ? paginationState.last_start_position + 10 : 0;
+    const totalRequestsMade = paginationState ? paginationState.total_requests_made : 0;
+
     const search = new GoogleSearch(serpApiKey);
     const allResults: SearchResult[] = [];
-    const maxRequests = 1;
+    const maxRequests = 1; // 1 for testing
     const resultsPerPage = 10; // Google typically returns 10 results per page
 
     console.log(`Starting search for query: "${query}" with ${maxRequests} requests`);
+    console.log(`Starting from position: ${startFromPosition}, Total requests made so far: ${totalRequestsMade}`);
 
     for (let i = 0; i < maxRequests; i++) {
-      const startPosition = i * resultsPerPage;
+      const startPosition = startFromPosition + (i * resultsPerPage);
 
       try {
         console.log(`Making request ${i + 1}/${maxRequests}, start position: ${startPosition}`);
@@ -92,8 +102,8 @@ export async function POST(request: NextRequest) {
                 position: startPosition + index + 1,
                 user_id: userId,
                 serpapi_position: startPosition + index + 1,
-                processed: 1, // Mark as processed
-                category: 2   // Set category to 2
+                processed: 0, // Mark as processed
+                category: 0  // Set category to 2
               };
 
               allResults.push(searchResult);
@@ -126,11 +136,18 @@ export async function POST(request: NextRequest) {
       searchResultsRepo.insertSearchResults(allResults);
     }
 
+    // Update pagination state - save the last position we reached
+    const lastPosition = startFromPosition + (maxRequests * resultsPerPage);
+    const newTotalRequests = totalRequestsMade + maxRequests;
+    searchResultsRepo.updatePaginationState(query, userId, lastPosition, newTotalRequests);
+
     return NextResponse.json({
       success: true,
       query,
       totalResults: allResults.length,
-      requestsMade: Math.min(maxRequests, Math.ceil(allResults.length / resultsPerPage)),
+      requestsMade: maxRequests,
+      totalRequestsMadeOverall: newTotalRequests,
+      nextStartPosition: lastPosition,
       results: allResults
     });
 
@@ -153,11 +170,21 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query');
+    const getPagination = searchParams.get('pagination');
 
     if (query) {
       // Get results for specific query
       const results = searchResultsRepo.getSearchResultsByQuery(query, userId);
-      return NextResponse.json({ results, query });
+      const paginationState = searchResultsRepo.getPaginationState(query, userId);
+      return NextResponse.json({
+        results,
+        query,
+        pagination: paginationState
+      });
+    } else if (getPagination === 'true') {
+      // Get all pagination states
+      const paginationStates = searchResultsRepo.getAllPaginationStates(userId);
+      return NextResponse.json({ paginationStates });
     } else {
       // Get search history
       const history = searchResultsRepo.getSearchHistory(userId);
@@ -189,8 +216,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     searchResultsRepo.deleteSearchResults(query, userId);
+    searchResultsRepo.resetPaginationState(query, userId);
 
-    return NextResponse.json({ success: true, message: 'Search results deleted' });
+    return NextResponse.json({ success: true, message: 'Search results and pagination state deleted' });
 
   } catch (error) {
     console.error('Search API DELETE error:', error);

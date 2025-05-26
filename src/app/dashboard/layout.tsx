@@ -34,10 +34,8 @@ import {
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "Training Sessions", href: "/dashboard/sessions", icon: Calendar },
-  { name: "Athletes", href: "/dashboard/athletes", icon: Users },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { name: "Baza stron", href: "/dashboard/pages-database", icon: Database },
+  { name: "Sites", href: "/dashboard/pages-database", icon: Database },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 

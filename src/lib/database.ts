@@ -48,6 +48,19 @@ function initializeTables() {
     )
   `);
 
+  // Create search_pagination table to track pagination state
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS search_pagination (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      search_query TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      last_start_position INTEGER DEFAULT 0,
+      total_requests_made INTEGER DEFAULT 0,
+      last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(search_query, user_id)
+    )
+  `);
+
   // Add processed column if it doesn't exist (for existing databases)
   try {
     db.exec(`ALTER TABLE history_scrapped ADD COLUMN processed INTEGER DEFAULT 0`);
@@ -67,6 +80,7 @@ function initializeTables() {
     CREATE INDEX IF NOT EXISTS idx_search_query ON history_scrapped(search_query);
     CREATE INDEX IF NOT EXISTS idx_search_date ON history_scrapped(search_date);
     CREATE INDEX IF NOT EXISTS idx_user_id ON history_scrapped(user_id);
+    CREATE INDEX IF NOT EXISTS idx_pagination_query_user ON search_pagination(search_query, user_id);
   `);
 }
 
@@ -83,6 +97,15 @@ export interface SearchResult {
   processed?: number;
   category?: number;
   created_at?: string;
+}
+
+export interface SearchPagination {
+  id?: number;
+  search_query: string;
+  user_id: string;
+  last_start_position: number;
+  total_requests_made: number;
+  last_updated?: string;
 }
 
 export class SearchResultsRepository {
@@ -137,6 +160,23 @@ export class SearchResultsRepository {
 
     const stmt = this.db.prepare(sql);
     return stmt.all(...params) as SearchResult[];
+  }
+
+  // Get search result by ID
+  getSearchResultById(id: number, userId?: string): SearchResult | null {
+    let sql = `
+      SELECT * FROM history_scrapped
+      WHERE id = ?
+    `;
+    const params: any[] = [id];
+
+    if (userId) {
+      sql += ` AND user_id = ?`;
+      params.push(userId);
+    }
+
+    const stmt = this.db.prepare(sql);
+    return stmt.get(...params) as SearchResult | null;
   }
 
   // Get all search queries for a user
@@ -227,6 +267,44 @@ export class SearchResultsRepository {
     const stmt = this.db.prepare(sql);
     const result = stmt.get(...params) as { count: number };
     return result.count > 0;
+  }
+
+  // Get pagination state for a query
+  getPaginationState(query: string, userId: string): SearchPagination | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM search_pagination
+      WHERE search_query = ? AND user_id = ?
+    `);
+    return stmt.get(query, userId) as SearchPagination | null;
+  }
+
+  // Update pagination state
+  updatePaginationState(query: string, userId: string, startPosition: number, requestsMade: number): void {
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO search_pagination
+      (search_query, user_id, last_start_position, total_requests_made, last_updated)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `);
+    stmt.run(query, userId, startPosition, requestsMade);
+  }
+
+  // Reset pagination state for a query
+  resetPaginationState(query: string, userId: string): void {
+    const stmt = this.db.prepare(`
+      DELETE FROM search_pagination
+      WHERE search_query = ? AND user_id = ?
+    `);
+    stmt.run(query, userId);
+  }
+
+  // Get all pagination states for a user
+  getAllPaginationStates(userId: string): SearchPagination[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM search_pagination
+      WHERE user_id = ?
+      ORDER BY last_updated DESC
+    `);
+    return stmt.all(userId) as SearchPagination[];
   }
 }
 

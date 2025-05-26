@@ -49,6 +49,16 @@ history_scrapped {
   category: integer (default 0)
   created_at: datetime (default current_timestamp)
 }
+
+search_pagination {
+  id: integer (primary key, autoincrement)
+  search_query: text (not null)
+  user_id: text (not null)
+  last_start_position: integer (default 0)
+  total_requests_made: integer (default 0)
+  last_updated: datetime (default current_timestamp)
+  UNIQUE(search_query, user_id)
+}
 ```
 
 ## Getting Started
@@ -151,6 +161,52 @@ The application includes a comprehensive theme system:
 - **Persistence**: Theme preference is saved in localStorage
 - **Real-time Updates**: Responds to system theme changes without page refresh
 - **Powered by**: next-themes library for reliable theme management
+
+## Search Functionality
+
+The application provides comprehensive search capabilities:
+
+- **SerpAPI Integration**: Uses Google Search Results API for web scraping
+- **Bulk Processing**: Executes 50 API requests per search query
+- **Smart Pagination**: Remembers where you left off and continues from the last position
+- **Domain Extraction**: Automatically extracts and stores main domains from URLs
+- **Duplicate Prevention**: Checks for existing domains before saving
+- **Category Assignment**: Automatically assigns category value 2 to all results
+- **Processing Status**: Marks all results as processed (value 1) upon saving
+- **Search History**: Maintains history of all search queries with result counts
+- **User Isolation**: Each user sees only their own search results
+- **Detailed Views**: Click on any result row to view detailed information
+- **Interactive Tables**: Clickable rows with hover effects for better UX
+
+### Pagination System
+
+The application includes an intelligent pagination system:
+
+- **State Persistence**: Remembers the last search position for each query
+- **Continue Search**: Button to continue from where you left off
+- **Reset Option**: Ability to start fresh from the beginning
+- **Progress Tracking**: Shows total API requests made and next start position
+- **Automatic Management**: Pagination state is automatically saved and restored
+- **Query-Specific**: Each search query has its own independent pagination state
+
+#### Example Usage:
+
+1. **Search "wordpress plugins"** → Gets results 0-499 (50 requests), saves position 500
+2. **Search "react components"** → Gets results 0-499 (50 requests), saves position 500
+3. **Continue "wordpress plugins"** → Gets results 500-999 (next 50 requests), saves position 1000
+4. **Continue "react components"** → Gets results 500-999 (next 50 requests), saves position 1000
+5. **Each query maintains its own pagination state independently**
+
+### Result Details
+
+Each search result can be viewed in detail:
+
+- **Clickable Rows**: Click any row in the results table to view detailed information
+- **Detailed View Page**: Dedicated page showing all result metadata
+- **Status Management**: Toggle processed status directly from the detail view
+- **External Links**: Quick access to the original webpage
+- **Metadata Display**: Shows ID, position, category, dates, and more
+- **Navigation**: Easy return to the main results table
 
 ## Contributing
 
