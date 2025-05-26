@@ -670,18 +670,19 @@ export default function PagesDatabasePage() {
             <AlertDialogDescription>
               Czy na pewno chcesz usunąć historię wyszukiwania dla frazy "
               {queryToDelete}"?
-              <br />
-              <br />
-              Ta akcja spowoduje usunięcie:
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Wszystkich zapisanych wyników wyszukiwania</li>
-                <li>Statusu paginacji dla tego zapytania</li>
-                <li>Pobranych danych użytkowników WordPress</li>
-              </ul>
-              <br />
-              <strong>Tej operacji nie można cofnąć.</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="text-sm text-muted-foreground mt-2">
+            <p>Ta akcja spowoduje usunięcie:</p>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>Wszystkich zapisanych wyników wyszukiwania</li>
+              <li>Statusu paginacji dla tego zapytania</li>
+              <li>Pobranych danych użytkowników WordPress</li>
+            </ul>
+            <p className="mt-2">
+              <strong>Tej operacji nie można cofnąć.</strong>
+            </p>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Anuluj</AlertDialogCancel>
             <AlertDialogAction

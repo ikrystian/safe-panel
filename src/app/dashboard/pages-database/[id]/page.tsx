@@ -46,6 +46,7 @@ interface SearchResult {
   wp_fetch_error?: string | null;
   wp_fetch_attempted_at?: string | null;
   errors?: string | null;
+  meta_generator?: string | null; // Add meta_generator to the interface
 }
 
 interface WordPressUser {
@@ -313,7 +314,7 @@ export default function SearchResultDetailsPage() {
                     </span>
                   </div>
                 ) : wpUsers.length > 0 ? (
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {wpUsers.map((user) => (
                       <div
                         key={user.id}
@@ -445,6 +446,17 @@ export default function SearchResultDetailsPage() {
                   {result.processed === 1 ? "Przetworzony" : "Nieprzetworzony"}
                 </Badge>
               </div>
+
+              {result.meta_generator && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Generator:
+                  </span>
+                  <span className="text-sm font-medium">
+                    {result.meta_generator}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
 

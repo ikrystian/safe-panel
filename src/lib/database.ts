@@ -120,6 +120,13 @@ function initializeTables() {
     // Column already exists, ignore error
   }
 
+  // Add meta_generator column to history_scrapped if it doesn't exist
+  try {
+    db.exec(`ALTER TABLE history_scrapped ADD COLUMN meta_generator TEXT DEFAULT NULL`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
   // Create index for better performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_search_query ON history_scrapped(search_query);
@@ -147,6 +154,7 @@ export interface SearchResult {
   wp_fetch_error?: string | null;
   wp_fetch_attempted_at?: string | null;
   errors?: string | null;
+  meta_generator?: string | null;
 }
 
 export interface SearchPagination {
@@ -457,6 +465,16 @@ export class SearchResultsRepository {
       WHERE id = ?
     `);
     updateStmt.run(JSON.stringify(errors), searchResultId);
+  }
+
+  // Update meta_generator field for a specific result
+  updateMetaGenerator(searchResultId: number, generator: string | null): void {
+    const stmt = this.db.prepare(`
+      UPDATE history_scrapped
+      SET meta_generator = ?
+      WHERE id = ?
+    `);
+    stmt.run(generator, searchResultId);
   }
 }
 

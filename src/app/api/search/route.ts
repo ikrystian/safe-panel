@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { searchResultsRepo, SearchResult } from '@/lib/database';
+import * as cheerio from 'cheerio'; // Import cheerio
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { GoogleSearch } = require('google-search-results-nodejs');
@@ -102,6 +103,64 @@ async function fetchAndSaveWordPressUsers(searchResultId: number, link: string):
     }
 
     console.error('Error fetching WordPress users:', error);
+  }
+}
+
+// Fetch and save meta name="generator" tag
+async function fetchAndSaveMetaGenerator(searchResultId: number, link: string): Promise<void> {
+  try {
+    console.log(`Fetching meta generator from: ${link}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    const response = await fetch(link, {
+      headers: {
+        'User-Agent': 'Safe-Panel/1.0'
+      },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const html = await response.text();
+      const $ = cheerio.load(html);
+      const generatorTag = $('meta[name="generator"]');
+      const generatorValue = generatorTag.attr('content');
+
+      if (generatorValue) {
+        searchResultsRepo.updateMetaGenerator(searchResultId, generatorValue);
+        console.log(`Saved meta generator "${generatorValue}" for result ${searchResultId}`);
+      } else {
+        searchResultsRepo.updateMetaGenerator(searchResultId, null); // Store null if not found
+        console.log(`No meta generator found for ${link}`);
+      }
+    } else {
+      const errorMsg = `Błąd HTTP ${response.status}: ${response.statusText}`;
+      searchResultsRepo.addError(searchResultId, 'meta_generator', errorMsg);
+      console.log(`Failed to fetch meta generator from ${link}: ${response.status}`);
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      const timeoutMsg = 'Przekroczono limit czasu połączenia (10s) podczas pobierania meta generatora';
+      searchResultsRepo.addError(searchResultId, 'meta_generator', timeoutMsg);
+    } else if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('DNS')) {
+      const dnsMsg = 'Nie można znaleźć domeny (błąd DNS) podczas pobierania meta generatora';
+      searchResultsRepo.addError(searchResultId, 'meta_generator', dnsMsg);
+    } else if (errorMessage.includes('ECONNREFUSED')) {
+      const connMsg = 'Połączenie odrzucone przez serwer podczas pobierania meta generatora';
+      searchResultsRepo.addError(searchResultId, 'meta_generator', connMsg);
+    } else if (errorMessage.includes('certificate') || errorMessage.includes('SSL')) {
+      const sslMsg = 'Błąd certyfikatu SSL podczas pobierania meta generatora';
+      searchResultsRepo.addError(searchResultId, 'meta_generator', sslMsg);
+    } else {
+      const connErrorMsg = `Błąd połączenia podczas pobierania meta generatora: ${errorMessage}`;
+      searchResultsRepo.addError(searchResultId, 'meta_generator', connErrorMsg);
+    }
+    console.error('Error fetching meta generator:', error);
   }
 }
 
@@ -349,11 +408,12 @@ export async function PATCH(request: NextRequest) {
       // Update specific result by ID
       searchResultsRepo.updateProcessedStatus(id, processed);
 
-      // If setting to processed (1), fetch WordPress users
+      // If setting to processed (1), fetch WordPress users and meta generator
       if (processed === 1) {
         const result = searchResultsRepo.getSearchResultById(id, userId);
         if (result?.link) {
           await fetchAndSaveWordPressUsers(id, result.link);
+          await fetchAndSaveMetaGenerator(id, result.link); // Call the new function
         }
       }
 
