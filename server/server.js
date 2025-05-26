@@ -1,9 +1,31 @@
 const express = require("express");
 const { exec, spawn } = require("child_process");
-const axios = require("axios");
+const { MongoClient } = require("mongodb"); // Added
 const fs = require("fs").promises;
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+// MongoDB Configuration
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  "mongodb+srv://fasolqa:B5jGFbrvtvKBk4aW@wpscan.dbmrnok.mongodb.net/?retryWrites=true&w=majority&appName=wpscan";
+const DB_NAME = "wpscan_db";
+const COLLECTION_NAME = "scan_results";
+
+let db;
+
+// Function to connect to MongoDB
+async function connectToMongo() {
+  try {
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    db = client.db(DB_NAME);
+    console.log("Successfully connected to MongoDB");
+  } catch (error) {
+    console.error("Error connecting to MongoDB:", error);
+    process.exit(1); // Exit if DB connection fails
+  }
+}
 
 // Zmienna do przechowywania nazwy kontenera
 const CONTAINER_NAME = "wpscan-persistent";
@@ -165,18 +187,12 @@ async function initializeContainer() {
 // Endpoint do wykonywania skanowania WPScan
 app.post("/scan", async (req, res) => {
   try {
-    const { url, callbackUrl, apiToken } = req.body;
+    const { url, apiToken } = req.body; // callbackUrl removed
 
     // Walidacja wymaganych parametrów
     if (!url) {
       return res.status(400).json({
         error: "Brak wymaganego parametru: url",
-      });
-    }
-
-    if (!callbackUrl) {
-      return res.status(400).json({
-        error: "Brak wymaganego parametru: callbackUrl",
       });
     }
 
@@ -190,7 +206,19 @@ app.post("/scan", async (req, res) => {
     console.log(`Rozpoczynam skanowanie dla: ${url}`);
 
     // Token API - użyj z requestu lub domyślny
-    const token = apiToken || process.env.API_WPSCAN;
+    const token = apiToken || "2qIEeNj0pi1qpIGCAALRNJ4xXwkwAaas67GK7gjmbTo";
+
+    if (!token) {
+      console.error(
+        "Błąd: Brak tokena API WPScan. Ustaw zmienną środowiskową API_WPSCAN lub przekaż apiToken w requeście."
+      );
+      // Send error response to client immediately, do not proceed with scan
+      return res.status(400).json({
+        error: "Brak tokena API WPScan. Skanowanie nie może być wykonane.",
+        message:
+          "Ustaw zmienną środowiskową API_WPSCAN na serwerze lub przekaż 'apiToken' w ciele żądania.",
+      });
+    }
 
     // Odpowiedź natychmiastowa - skanowanie w tle
     res.json({
@@ -223,20 +251,20 @@ app.post("/scan", async (req, res) => {
         scanResult.rawOutput = stdout;
       }
 
-      // Wysłanie wyniku na wskazany URL
+      // Zapisz wynik w bazie danych MongoDB
       try {
-        console.log(`Wysyłam wyniki na: ${callbackUrl}`);
-
-        const response = await axios.post(callbackUrl, scanResult, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          timeout: 30000,
-        });
-
-        console.log(`Wyniki wysłane pomyślnie. Status: ${response.status}`);
-      } catch (sendError) {
-        console.error("Błąd wysyłania wyniku:", sendError.message);
+        if (!db) {
+          console.error("Database not initialized. Cannot save scan result.");
+        } else {
+          const collection = db.collection(COLLECTION_NAME);
+          await collection.insertOne(scanResult);
+          console.log(`Wyniki skanowania dla ${url} zapisane w MongoDB.`);
+        }
+      } catch (dbError) {
+        console.error(
+          "Błąd zapisu wyniku skanowania do MongoDB:",
+          dbError.message
+        );
       }
     } catch (scanError) {
       console.error("Błąd skanowania:", scanError);
@@ -249,14 +277,20 @@ app.post("/scan", async (req, res) => {
         container: CONTAINER_NAME,
       };
 
-      // Wyślij błąd na callback URL
+      // Zapisz błąd w bazie danych MongoDB
       try {
-        await axios.post(callbackUrl, errorResult, {
-          headers: { "Content-Type": "application/json" },
-          timeout: 30000,
-        });
-      } catch (sendError) {
-        console.error("Błąd wysyłania błędu:", sendError.message);
+        if (!db) {
+          console.error("Database not initialized. Cannot save error result.");
+        } else {
+          const collection = db.collection(COLLECTION_NAME);
+          await collection.insertOne(errorResult);
+          console.log(`Błąd skanowania dla ${url} zapisany w MongoDB.`);
+        }
+      } catch (dbError) {
+        console.error(
+          "Błąd zapisu błędu skanowania do MongoDB:",
+          dbError.message
+        );
       }
     }
   } catch (error) {
@@ -414,12 +448,60 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Endpoint informacyjny
-app.get("/", (req, res) => {
+// Endpoint to retrieve scan results by URL
+app.get("/scan-results", async (req, res) => {
+  try {
+    const { url } = req.query;
+
+    if (!url) {
+      return res.status(400).json({
+        error: "Brak wymaganego parametru: url",
+      });
+    }
+
+    if (!db) {
+      return res.status(503).json({
+        error: "Baza danych nie jest zainicjalizowana.",
+      });
+    }
+
+    const collection = db.collection(COLLECTION_NAME);
+    // Find all results for the given URL, sort by timestamp descending
+    const results = await collection
+      .find({ url: url })
+      .sort({ timestamp: -1 })
+      .toArray();
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        message: "Nie znaleziono wyników skanowania dla podanego URL.",
+        url: url,
+      });
+    }
+
+    res.json({
+      message: "Wyniki skanowania pobrane pomyślnie.",
+      url: url,
+      count: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error("Błąd pobierania wyników skanowania:", error);
+    res.status(500).json({
+      error: "Wewnętrzny błąd serwera podczas pobierania wyników skanowania.",
+      details: error.message,
+    });
+  }
+});
+
+// Endpoint do sprawdzania statusu serwera
+app.get("/health", (req, res) => {
   res.json({
     message: "WPScan Web Server",
     endpoints: {
       "POST /scan": "Wykonuje skanowanie WPScan",
+      "GET /scan-results":
+        "Pobiera wyniki skanowania z bazy danych po URL (parametr: ?url=example.com)",
       "POST /save": "Zapisuje dane do file.json",
       "GET /get": "Odczytuje dane z file.json",
       "POST /container/restart": "Restartuje kontener WPScan",
@@ -433,9 +515,13 @@ app.get("/", (req, res) => {
         url: "/scan",
         body: {
           url: "https://example.com",
-          callbackUrl: "https://your-callback-url.com/results",
           apiToken: "optional-custom-api-token",
         },
+      },
+      "scan-results": {
+        method: "GET",
+        url: "/scan-results?url=https://example.com",
+        description: "Returns scan results for the specified URL from MongoDB.",
       },
       save: {
         method: "POST",
@@ -470,6 +556,7 @@ app.use((error, req, res, next) => {
 
 // Start serwera
 app.listen(PORT, async () => {
+  await connectToMongo(); // Connect to MongoDB before starting the server
   console.log(`🚀 WPScan Server uruchomiony na porcie ${PORT}`);
   console.log(`📍 Endpoint skanowania: http://localhost:${PORT}/scan`);
   console.log(`💾 Endpoint zapisu: http://localhost:${PORT}/save`);
