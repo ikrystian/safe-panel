@@ -126,28 +126,18 @@ async function fetchAndSaveMetaGenerator(searchResultId: number, link: string): 
     if (response.ok) {
       const html = await response.text();
       const $ = cheerio.load(html);
-      let selectedGeneratorValue: string | null = null;
-      let firstGeneratorValue: string | null = null;
+      const allGeneratorValues: string[] = [];
 
       $('meta[name="generator"]').each((i, element) => {
         const generatorValue = $(element).attr('content');
         if (generatorValue) {
-          if (generatorValue.startsWith('WordPress')) {
-            selectedGeneratorValue = generatorValue;
-            return false; // Stop iteration if WordPress generator is found
-          }
-          if (firstGeneratorValue === null) {
-            firstGeneratorValue = generatorValue; // Store the first encountered generator
-          }
+          allGeneratorValues.push(generatorValue);
         }
       });
 
-      // If a WordPress generator was found, use it. Otherwise, use the first general generator.
-      const finalGeneratorValue = selectedGeneratorValue || firstGeneratorValue;
-
-      if (finalGeneratorValue) {
-        searchResultsRepo.updateMetaGenerator(searchResultId, finalGeneratorValue);
-        console.log(`Saved meta generator "${finalGeneratorValue}" for result ${searchResultId}`);
+      if (allGeneratorValues.length > 0) {
+        searchResultsRepo.updateMetaGenerator(searchResultId, allGeneratorValues);
+        console.log(`Saved meta generators "${allGeneratorValues.join(', ')}" for result ${searchResultId}`);
       } else {
         searchResultsRepo.updateMetaGenerator(searchResultId, null); // Store null if no generator found
         console.log(`No meta generator found for ${link}`);
@@ -242,7 +232,7 @@ export async function POST(request: NextRequest) {
         console.log(`Making request ${i + 1}/${maxRequests}, start position: ${startPosition}`);
 
         const searchParams = {
-          q: query + "  inurl:/wp-",
+          q: query + "  inurl:wp-content OR inurl:wp-admin OR inurl:wp-includes",
           location: "Poland", // You can make this configurable
           hl: "pl", // Language
           gl: "pl", // Country
@@ -312,9 +302,16 @@ export async function POST(request: NextRequest) {
 
     console.log(`Search completed. Total results found: ${allResults.length}`);
 
+    let newlyAddedResults: SearchResult[] = [];
     // Save all results to database
     if (allResults.length > 0) {
       searchResultsRepo.insertSearchResults(allResults);
+      // After inserting, fetch the newly added results from the database
+      // This assumes getSearchResultsByQuery returns results ordered by creation,
+      // so the most recent ones (which are the newly added ones) will be at the top.
+      // A more robust solution might involve returning IDs from insertSearchResults
+      // or adding a unique identifier to the batch. For now, we'll fetch all for the query.
+      newlyAddedResults = searchResultsRepo.getSearchResultsByQuery(query, userId);
     }
 
     // Update pagination state - save the last position we reached
@@ -325,11 +322,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       query,
-      totalResults: allResults.length,
+      totalResults: allResults.length, // This still represents the count of newly found results
       requestsMade: maxRequests,
       totalRequestsMadeOverall: newTotalRequests,
       nextStartPosition: lastPosition,
-      results: allResults
+      results: newlyAddedResults // Return the results fetched from the database
     });
 
   } catch (error) {

@@ -46,7 +46,7 @@ interface SearchResult {
   wp_fetch_error?: string | null;
   wp_fetch_attempted_at?: string | null;
   errors?: string | null;
-  meta_generator?: string | null; // Add meta_generator to the interface
+  meta_generator?: string[] | null; // Add meta_generator to the interface
 }
 
 interface WordPressUser {
@@ -122,10 +122,9 @@ export default function SearchResultDetailsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Powrót
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </div>
         <Card>
@@ -140,10 +139,9 @@ export default function SearchResultDetailsPage() {
   if (error || !result) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Powrót
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </div>
         <Card>
@@ -161,10 +159,9 @@ export default function SearchResultDetailsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Powrót
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
@@ -447,14 +444,18 @@ export default function SearchResultDetailsPage() {
                 </Badge>
               </div>
 
-              {result.meta_generator && (
-                <div className="flex justify-between">
+              {result.meta_generator && result.meta_generator.length > 0 && (
+                <div>
                   <span className="text-sm text-muted-foreground">
                     Generator:
                   </span>
-                  <span className="text-sm font-medium">
-                    {result.meta_generator}
-                  </span>
+                  <div className="mt-1 space-y-1">
+                    {result.meta_generator.map((generator, index) => (
+                      <Badge key={index} variant="outline" className="mr-1">
+                        {generator}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>

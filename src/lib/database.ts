@@ -154,7 +154,7 @@ export interface SearchResult {
   wp_fetch_error?: string | null;
   wp_fetch_attempted_at?: string | null;
   errors?: string | null;
-  meta_generator?: string | null;
+  meta_generator?: string[] | null;
 }
 
 export interface SearchPagination {
@@ -226,7 +226,22 @@ export class SearchResultsRepository {
     sql += ` ORDER BY created_at DESC, serpapi_position ASC`;
 
     const stmt = this.db.prepare(sql);
-    return stmt.all(...params) as SearchResult[];
+    const results = stmt.all(...params) as SearchResult[];
+
+    return results.map(result => {
+      if (typeof result.meta_generator === 'string') {
+        try {
+          result.meta_generator = JSON.parse(result.meta_generator);
+        } catch (e) {
+          result.meta_generator = null;
+        }
+      } else if (result.meta_generator === null) {
+        result.meta_generator = null;
+      } else if (!Array.isArray(result.meta_generator)) {
+        result.meta_generator = null;
+      }
+      return result;
+    });
   }
 
   // Get search result by ID
@@ -243,7 +258,21 @@ export class SearchResultsRepository {
     }
 
     const stmt = this.db.prepare(sql);
-    return stmt.get(...params) as SearchResult | null;
+    const result = stmt.get(...params) as SearchResult | null;
+
+    if (result && typeof result.meta_generator === 'string') {
+      try {
+        result.meta_generator = JSON.parse(result.meta_generator);
+      } catch (e) {
+        result.meta_generator = null; // Handle parsing errors
+      }
+    } else if (result && result.meta_generator === null) {
+      result.meta_generator = null;
+    } else if (result && !Array.isArray(result.meta_generator)) {
+      result.meta_generator = null; // Ensure it's an array or null
+    }
+
+    return result;
   }
 
   // Get all search queries for a user
@@ -468,13 +497,13 @@ export class SearchResultsRepository {
   }
 
   // Update meta_generator field for a specific result
-  updateMetaGenerator(searchResultId: number, generator: string | null): void {
+  updateMetaGenerator(searchResultId: number, generators: string[] | null): void {
     const stmt = this.db.prepare(`
       UPDATE history_scrapped
       SET meta_generator = ?
       WHERE id = ?
     `);
-    stmt.run(generator, searchResultId);
+    stmt.run(generators ? JSON.stringify(generators) : null, searchResultId);
   }
 }
 
