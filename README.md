@@ -68,6 +68,7 @@ wordpress_users {
   search_result_id: integer (not null, foreign key)
   wp_user_id: integer (not null)
   name: text (not null)
+  slug: text (default null) -- WordPress username/login
   created_at: datetime (default current_timestamp)
 }
 ```

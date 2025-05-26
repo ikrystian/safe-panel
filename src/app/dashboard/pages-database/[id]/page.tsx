@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
   ArrowLeft,
   ExternalLink,
   Calendar,
@@ -16,6 +23,10 @@ import {
   Check,
   X,
   Loader2,
+  ChevronDown,
+  Settings,
+  RefreshCw,
+  Eye,
 } from "lucide-react";
 
 interface SearchResult {
@@ -41,6 +52,7 @@ interface WordPressUser {
   search_result_id: number;
   wp_user_id: number;
   name: string;
+  slug?: string;
   created_at?: string;
 }
 
@@ -164,28 +176,68 @@ export default function SearchResultDetailsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant={result.processed === 1 ? "default" : "outline"}
-            onClick={() => processWebsite(result.processed === 1 ? 0 : 1)}
-            disabled={processingWebsite || result.processed === 1}
-          >
-            {processingWebsite ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Przetwarzanie...
-              </>
-            ) : result.processed === 1 ? (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Strona przetworzona
-              </>
-            ) : (
-              <>
-                <X className="h-4 w-4 mr-2" />
-                Przetwórz stronę
-              </>
-            )}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant={result.processed === 1 ? "default" : "outline"}
+                disabled={processingWebsite}
+              >
+                {processingWebsite ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Przetwarzanie...
+                  </>
+                ) : result.processed === 1 ? (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Akcje
+                  </>
+                ) : (
+                  <>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Akcje
+                  </>
+                )}
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {result.processed === 0 ? (
+                <DropdownMenuItem onClick={() => processWebsite(1)}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Przetwórz stronę
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => processWebsite(0)}>
+                  <X className="h-4 w-4 mr-2" />
+                  Oznacz jako nieprzetworzony
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <a
+                  href={result.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Otwórz stronę
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a
+                  href={`${result.link}/wp-json/wp/v2/users`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center show-users-api-link"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  WP USERS API
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -219,11 +271,7 @@ export default function SearchResultDetailsPage() {
                 <div className="flex items-center gap-2 mt-1">
                   <Globe className="h-4 w-4 text-muted-foreground" />
                   <a
-                    href={
-                      result.link?.startsWith("http")
-                        ? result.link
-                        : `http://${result.link}`
-                    }
+                    href={result.link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline break-all"
@@ -232,11 +280,7 @@ export default function SearchResultDetailsPage() {
                   </a>
                   <Button variant="ghost" size="sm" asChild>
                     <a
-                      href={
-                        result.link?.startsWith("http")
-                          ? result.link
-                          : `http://${result.link}`
-                      }
+                      href={result.link}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -245,11 +289,11 @@ export default function SearchResultDetailsPage() {
                   </Button>
                 </div>
                 <a
-                  href={`http://${result.link}/wp-json/wp/v2/users`}
+                  href={`${result.link}/wp-json/wp/v2/users`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {`http://${result.link}/wp-json/wp/v2/users`}
+                  {`${result.link}/wp-json/wp/v2/users`}
                 </a>
               </div>
 
@@ -272,7 +316,8 @@ export default function SearchResultDetailsPage() {
                 </label>
                 {result?.processed === 0 ? (
                   <div className="mt-2 text-sm text-muted-foreground bg-blue-50 p-2 rounded">
-                    Kliknij "Przetwórz stronę" aby pobrać użytkowników WordPress
+                    Użyj menu "Akcje" → "Przetwórz stronę" aby pobrać
+                    użytkowników WordPress
                   </div>
                 ) : processingWebsite ? (
                   <div className="flex items-center gap-2 mt-2">
@@ -290,9 +335,15 @@ export default function SearchResultDetailsPage() {
                       >
                         <div className="flex-1">
                           <p className="text-sm font-medium">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            ID: {user.wp_user_id}
-                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>ID: {user.wp_user_id}</span>
+                            {user.slug && (
+                              <>
+                                <span>•</span>
+                                <span>Login: {user.slug}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

@@ -21,6 +21,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Search,
   Database,
   ExternalLink,
@@ -76,6 +86,8 @@ export default function PagesDatabasePage() {
   const [allPaginationStates, setAllPaginationStates] = useState<
     SearchPagination[]
   >([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [queryToDelete, setQueryToDelete] = useState<string | null>(null);
 
   // Load search history on component mount
   useEffect(() => {
@@ -210,19 +222,27 @@ export default function PagesDatabasePage() {
     }
   };
 
-  const deleteSearchHistory = async (query: string) => {
+  const handleDeleteClick = (query: string) => {
+    setQueryToDelete(query);
+    setDeleteDialogOpen(true);
+  };
+
+  const deleteSearchHistory = async () => {
+    if (!queryToDelete) return;
+
     try {
       const response = await fetch("/api/search", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: queryToDelete }),
       });
 
       if (response.ok) {
         await loadSearchHistory();
-        if (selectedQuery === query) {
+        await loadAllPaginationStates();
+        if (selectedQuery === queryToDelete) {
           setSearchResults([]);
           setSelectedQuery(null);
           setPaginationState(null);
@@ -230,6 +250,9 @@ export default function PagesDatabasePage() {
       }
     } catch (error) {
       console.error("Error deleting search history:", error);
+    } finally {
+      setDeleteDialogOpen(false);
+      setQueryToDelete(null);
     }
   };
 
@@ -346,100 +369,99 @@ export default function PagesDatabasePage() {
         </Card>
       </div>
 
-      {/* Pagination States Overview */}
-      {allPaginationStates.length > 0 && (
+      {/* Combined Search History and Pagination Status */}
+      {searchHistory.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <History className="h-5 w-5" />
-              Status paginacji dla zapytań
+              Historia wyszukiwań i status paginacji
             </CardTitle>
             <CardDescription>
-              Każde zapytanie ma swój własny stan paginacji - możesz kontynuować
-              wyszukiwanie od miejsca gdzie skończyłeś
+              Kliknij na frazę, aby wyświetlić zapisane wyniki. Możesz
+              kontynuować wyszukiwanie od miejsca gdzie skończyłeś.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {allPaginationStates.map((state) => (
-                <div
-                  key={state.search_query}
-                  className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
-                >
-                  <div className="flex flex-col gap-1">
-                    <span className="font-medium text-sm">
-                      {state.search_query}
-                    </span>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>
-                        Zapytań wykonanych: {state.total_requests_made}
-                      </span>
-                      <span>Następna pozycja: {state.last_start_position}</span>
-                      <span>
-                        Ostatnia aktualizacja:{" "}
-                        {new Date(state.last_updated || "").toLocaleDateString(
-                          "pl-PL"
+              {searchHistory.map((item) => {
+                // Find corresponding pagination state
+                const paginationState = allPaginationStates.find(
+                  (state) => state.search_query === item.search_query
+                );
+
+                return (
+                  <div
+                    key={item.search_query}
+                    className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
+                  >
+                    <div className="flex flex-col gap-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => loadHistoryResults(item.search_query)}
+                          className="text-left p-0 h-auto font-medium"
+                        >
+                          {item.search_query}
+                        </Button>
+                        <Badge variant="secondary">{item.count} wyników</Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>
+                          Ostatnie wyszukiwanie:{" "}
+                          {new Date(item.last_search).toLocaleDateString(
+                            "pl-PL"
+                          )}
+                        </span>
+                        {paginationState && (
+                          <>
+                            <span>
+                              Zapytań wykonanych:{" "}
+                              {paginationState.total_requests_made}
+                            </span>
+                            <span>
+                              Następna pozycja:{" "}
+                              {paginationState.last_start_position}
+                            </span>
+                          </>
                         )}
-                      </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadHistoryResults(item.search_query)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Pokaż wyniki
+                      </Button>
+                      {paginationState && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSearchQuery(item.search_query);
+                            setSelectedQuery(item.search_query);
+                            loadHistoryResults(item.search_query);
+                          }}
+                        >
+                          <Search className="h-4 w-4 mr-1" />
+                          Kontynuuj
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteClick(item.search_query)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => loadHistoryResults(state.search_query)}
-                    >
-                      Pokaż wyniki
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Search History */}
-      {searchHistory.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Historia wyszukiwań</CardTitle>
-            <CardDescription>
-              Kliknij na frazę, aby wyświetlić zapisane wyniki
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {searchHistory.map((item) => (
-                <div
-                  key={item.search_query}
-                  className="flex items-center justify-between p-2 border rounded"
-                >
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => loadHistoryResults(item.search_query)}
-                      className="text-left"
-                    >
-                      {item.search_query}
-                    </Button>
-                    <Badge variant="secondary">{item.count} wyników</Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(item.last_search).toLocaleDateString("pl-PL")}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteSearchHistory(item.search_query)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -579,7 +601,7 @@ export default function PagesDatabasePage() {
                         </Button>
                         <Button variant="ghost" size="sm" asChild>
                           <a
-                            href={"http://" + result.link}
+                            href={result.link}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -609,6 +631,38 @@ export default function PagesDatabasePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Potwierdź usunięcie</AlertDialogTitle>
+            <AlertDialogDescription>
+              Czy na pewno chcesz usunąć historię wyszukiwania dla frazy "
+              {queryToDelete}"?
+              <br />
+              <br />
+              Ta akcja spowoduje usunięcie:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Wszystkich zapisanych wyników wyszukiwania</li>
+                <li>Statusu paginacji dla tego zapytania</li>
+                <li>Pobranych danych użytkowników WordPress</li>
+              </ul>
+              <br />
+              <strong>Tej operacji nie można cofnąć.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteSearchHistory}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Usuń
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -38,7 +38,8 @@ async function fetchAndSaveWordPressUsers(searchResultId: number, link: string):
         const wpUsers = users.map(user => ({
           search_result_id: searchResultId,
           wp_user_id: user.id,
-          name: user.name || 'Unknown'
+          name: user.name || 'Unknown',
+          slug: user.slug || null
         }));
 
         searchResultsRepo.insertWordPressUsers(wpUsers);

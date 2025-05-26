@@ -106,6 +106,13 @@ function initializeTables() {
     // Column already exists, ignore error
   }
 
+  // Add slug column to wordpress_users if it doesn't exist (for existing databases)
+  try {
+    db.exec(`ALTER TABLE wordpress_users ADD COLUMN slug TEXT DEFAULT NULL`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
   // Create index for better performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_search_query ON history_scrapped(search_query);
@@ -148,6 +155,7 @@ export interface WordPressUser {
   search_result_id: number;
   wp_user_id: number;
   name: string;
+  slug?: string;
   created_at?: string;
 }
 
@@ -354,8 +362,8 @@ export class SearchResultsRepository {
   insertWordPressUsers(users: WordPressUser[]): void {
     const stmt = this.db.prepare(`
       INSERT INTO wordpress_users (
-        search_result_id, wp_user_id, name
-      ) VALUES (?, ?, ?)
+        search_result_id, wp_user_id, name, slug
+      ) VALUES (?, ?, ?, ?)
     `);
 
     const insertMany = this.db.transaction((users: WordPressUser[]) => {
@@ -363,7 +371,8 @@ export class SearchResultsRepository {
         stmt.run(
           user.search_result_id,
           user.wp_user_id,
-          user.name
+          user.name,
+          user.slug || null
         );
       }
     });
