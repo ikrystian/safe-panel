@@ -11,12 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
@@ -45,7 +40,6 @@ import {
   Settings,
   Eye,
   AlertCircle,
-  ScanEye,
   Wand2, // Added for Gemini AI
 } from "lucide-react";
 
@@ -75,10 +69,6 @@ export default function SearchResultDetailsPage() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [scanData, setScanData] = useState<any | null>(null);
-  const [scanLoading, setScanLoading] = useState(false);
-  const [scanError, setScanError] = useState<string | null>(null);
-  // const [generatedEmail, setGeneratedEmail] = useState<string | null>(null); // No longer needed for direct display
   const [generatingEmail, setGeneratingEmail] = useState(false);
   const [geminiError, setGeminiError] = useState<string | null>(null);
   const [emailPreviewOpen, setEmailPreviewOpen] = useState(false);
@@ -89,20 +79,11 @@ export default function SearchResultDetailsPage() {
     }
   }, [params.id]);
 
-  useEffect(() => {
-    if (result?.link) {
-      loadScanResults(result.link);
-    }
-  }, [result?.link]);
-
   const loadResultDetails = async (id: string) => {
     try {
       setLoading(true);
       setResult(null); // Reset previous result
-      setScanData(null); // Reset previous scan data
-      // setGeneratedEmail(null); // No longer needed
       setError(null);
-      setScanError(null);
       setGeminiError(null); // Reset gemini error
       const response = await fetch(`/api/search/result/${id}`);
 
@@ -120,40 +101,7 @@ export default function SearchResultDetailsPage() {
     }
   };
 
-  const loadScanResults = async (url: string) => {
-    if (!url) return;
-    try {
-      setScanLoading(true);
-      setScanError(null);
-      const response = await fetch(
-        `http://localhost:4000/scan-results?url=${encodeURIComponent(url)}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setScanData(data);
-      } else {
-        const errorData = await response.text();
-        setScanError(
-          `Nie udało się załadować wyników skanowania (status: ${response.status}). ${errorData}`
-        );
-      }
-    } catch (err) {
-      setScanError("Wystąpił błąd podczas ładowania wyników skanowania.");
-      console.error("Error loading scan results:", err);
-    } finally {
-      setScanLoading(false);
-    }
-  };
-
   const handleGenerateEmail = async () => {
-    if (!scanData || !scanData.data || scanData.data.length === 0) {
-      setGeminiError(
-        "Brak danych skanowania lub wyników skanowania do wygenerowania emaila."
-      );
-      return;
-    }
-    // The scanData from WPScan server is an object with a 'data' array of scan documents.
-    // The history_scrapped.id is what we need for the SQLite update.
     if (!result || typeof result.id === "undefined") {
       setGeminiError(
         "Brak ID wyniku wyszukiwania (history_scrapped.id). Nie można zapisać emaila."
@@ -161,16 +109,30 @@ export default function SearchResultDetailsPage() {
       return;
     }
 
+    if (!result.link) {
+      setGeminiError("Brak URL strony do analizy.");
+      return;
+    }
+
     setGeneratingEmail(true);
-    // setGeneratedEmail(null); // No longer needed
     setGeminiError(null);
 
-    // The prompt now expects a JSON response from Gemini
-    const prompt = `Zwróć JSON z poprawna struktura z następującymi kluczami: "category" (string - kategoria strony na podstawie jej treści, np. "Sklep internetowy - odzież", "Blog technologiczny", "Hotel/Turystyka"), "contact" (object z kluczem "message": string - informacja o znalezionych danych kontaktowych lub informacja o ich braku), oraz "email_content" (object z kluczem "html": string - treść emaila w formacie HTML). Email powinien być skierowany do właściciela witryny, opisywać podatności na atak na podstawie poniższego JSON-a z danymi skanowania. To pierwszy email do klienta, mający na celu nawiązanie współpracy. Powinien zawierać tabelkę z nieaktualnymi pluginami) (nazwa, zainstalowana wersja, najnowsza wersja). Jeśli API ujawnia użytkowników, wskaż to jako zagrożenie. Podkreśl znaczenie bezpieczeństwa witryny w branży klienta (określonej przez Ciebie w polu "category"). Wskaż kluczowe problemy, zasugeruj kontakt w celu omówienia szczegółów lub zaoferowania pomocy. Email powinien wzbudzić świadomość ryzyka włamania lub wycieku danych. Zaznacz, że na życzenie klienta możesz przygotować darmowy, szczegółowy raport podatności. Email ma być gotowy do wysłania. \n\nJSON z danymi skanowania (użyj go do analizy i treści emaila):\n${JSON.stringify(
-      scanData,
-      null,
-      2
-    )}`;
+    // Updated prompt to work without scan data - AI will analyze the website URL
+    const prompt = `Zwróć JSON z poprawną strukturą z następującymi kluczami: "category" (string - kategoria strony na podstawie jej treści, np. "Sklep internetowy - odzież", "Blog technologiczny", "Hotel/Turystyka"), "contact" (object z kluczem "message": string - informacja o znalezionych danych kontaktowych lub informacja o ich braku), oraz "email_content" (object z kluczem "html": string - treść emaila w formacie HTML).
+
+Przeanalizuj stronę internetową: ${result.link}
+
+Email powinien być skierowany do właściciela witryny i mieć na celu nawiązanie współpracy w zakresie bezpieczeństwa. To pierwszy kontakt z klientem. Email powinien:
+- Przedstawić potencjalne zagrożenia bezpieczeństwa typowe dla danej branży
+- Podkreślić znaczenie bezpieczeństwa witryny w branży klienta (określonej przez Ciebie w polu "category")
+- Wskazać ogólne problemy bezpieczeństwa stron internetowych
+- Zasugerować kontakt w celu omówienia szczegółów lub zaoferowania pomocy
+- Wzbudzić świadomość ryzyka włamania lub wycieku danych
+- Zaznacz, że na życzenie klienta możesz przygotować darmowy, szczegółowy raport podatności
+- Email ma być gotowy do wysłania
+
+Tytuł strony: ${result.title || "Brak tytułu"}
+Opis strony: ${result.snippet || "Brak opisu"}`;
 
     try {
       console.log(prompt);
@@ -271,9 +233,7 @@ export default function SearchResultDetailsPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={handleGenerateEmail}
-                disabled={
-                  generatingEmail || !scanData || scanLoading || !!scanError
-                }
+                disabled={generatingEmail}
               >
                 {generatingEmail ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -362,53 +322,6 @@ export default function SearchResultDetailsPage() {
               <Separator />
             </CardContent>
           </Card>
-
-          {/* Scan Results Accordion */}
-          {result?.link && (
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="scan-results">
-                <Card>
-                  <AccordionTrigger className="w-full px-6 py-4 hover:no-underline">
-                    <div className="flex items-center gap-2 w-full">
-                      <ScanEye className="h-5 w-5" />
-                      <div className="flex flex-col items-start">
-                        <CardTitle className="text-lg">
-                          Wyniki Skanowania Strony
-                        </CardTitle>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <CardContent className="pt-4">
-                      {scanLoading && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Ładowanie wyników skanowania...
-                        </div>
-                      )}
-                      {scanError && (
-                        <div className="text-red-600">
-                          <AlertCircle className="h-4 w-4 inline mr-1" />
-                          {scanError}
-                        </div>
-                      )}
-                      {scanData && !scanLoading && !scanError && (
-                        <pre className="text-sm bg-muted p-4 rounded-md overflow-x-auto">
-                          {JSON.stringify(scanData, null, 2)}
-                        </pre>
-                      )}
-                      {!scanData && !scanLoading && !scanError && (
-                        <p className="text-muted-foreground">
-                          Brak wyników skanowania do wyświetlenia lub strona nie
-                          została jeszcze przetworzona.
-                        </p>
-                      )}
-                    </CardContent>
-                  </AccordionContent>
-                </Card>
-              </AccordionItem>
-            </Accordion>
-          )}
 
           {/* Gemini AI Analysis Section */}
           {(generatingEmail ||
