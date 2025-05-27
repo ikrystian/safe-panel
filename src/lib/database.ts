@@ -134,7 +134,12 @@ export interface SearchResult {
   wp_fetch_error?: string | null;
   wp_fetch_attempted_at?: string | null;
   errors?: string | null;
-  // meta_generator?: string[] | null; // Removed
+  // gemini_generated_email?: string | null; // Old, to be removed or repurposed
+  // gemini_email_generated_at?: string | null; // Old, to be removed or repurposed
+  gemini_category?: string | null; // New
+  gemini_contact_message?: string | null; // New
+  gemini_email_html?: string | null; // New
+  gemini_payload_processed_at?: string | null; // New
 }
 
 export interface SearchPagination {
@@ -212,16 +217,17 @@ export class SearchResultsRepository {
     //   } else if (!Array.isArray(result.meta_generator)) {
     //     result.meta_generator = null;
     //   }
-    //   return result;
-    // });
+  //   return result;
+  // });
   }
 
   // Get search result by ID
   getSearchResultById(id: number, userId?: string): SearchResult | null {
     let sql = `
-      SELECT * FROM history_scrapped
+      SELECT id, search_query, title, link, snippet, position, search_date, user_id, serpapi_position, processed, category, created_at, wp_fetch_status, wp_fetch_error, wp_fetch_attempted_at, errors, gemini_category, gemini_contact_message, gemini_email_html, gemini_payload_processed_at 
+      FROM history_scrapped
       WHERE id = ?
-    `;
+    `; // Explicitly listed columns to include new Gemini fields
     const params: any[] = [id];
 
     if (userId) {
@@ -232,19 +238,26 @@ export class SearchResultsRepository {
     const stmt = this.db.prepare(sql);
     const result = stmt.get(...params) as SearchResult | null;
 
-    // if (result && typeof result.meta_generator === 'string') {
-    //   try {
-    //     result.meta_generator = JSON.parse(result.meta_generator);
-    //   } catch (e) {
-    //     result.meta_generator = null; // Handle parsing errors
-    //   }
-    // } else if (result && result.meta_generator === null) {
-    //   result.meta_generator = null;
-    // } else if (result && !Array.isArray(result.meta_generator)) {
-    //   result.meta_generator = null; // Ensure it's an array or null
-    // }
-
     return result;
+  }
+
+  // Update generated email for a specific result - REPURPOSED for new Gemini data structure
+  updateGeminiAnalysisData(
+    id: number, 
+    geminiCategory: string | null,
+    geminiContactMessage: string | null,
+    geminiEmailHtml: string | null,
+    timestamp: string
+  ): void {
+    const stmt = this.db.prepare(`
+      UPDATE history_scrapped
+      SET gemini_category = ?, 
+          gemini_contact_message = ?, 
+          gemini_email_html = ?, 
+          gemini_payload_processed_at = ?
+      WHERE id = ?
+    `);
+    stmt.run(geminiCategory, geminiContactMessage, geminiEmailHtml, timestamp, id);
   }
 
   // Get all search queries for a user

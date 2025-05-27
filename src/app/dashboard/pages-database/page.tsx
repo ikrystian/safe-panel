@@ -41,7 +41,6 @@ import {
   Check,
   X,
   Eye,
-  User,
   Clock,
   AlertCircle,
 } from "lucide-react";
@@ -275,45 +274,6 @@ export default function PagesDatabasePage() {
       setDeleteDialogOpen(false);
       setQueryToDelete(null);
     }
-  };
-
-  const processWebsite = async (id: number, processed: number) => {
-    try {
-      const response = await fetch("/api/search", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id, processed }),
-      });
-
-      if (response.ok) {
-        // Update the local state
-        setSearchResults((prev) =>
-          prev.map((result) =>
-            result.id === id ? { ...result, processed } : result
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Error updating processed status:", error);
-    }
-  };
-
-  // Parse errors from JSON string
-  const parseErrors = (errorsString: string | null): any[] => {
-    if (!errorsString) return [];
-    try {
-      return JSON.parse(errorsString);
-    } catch (e) {
-      return [];
-    }
-  };
-
-  // Get WordPress user errors
-  const getWordPressUserErrors = (errorsString: string | null): any[] => {
-    const errors = parseErrors(errorsString);
-    return errors.filter((error) => error.type === "wordpress_users");
   };
 
   return (

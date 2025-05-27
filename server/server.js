@@ -467,23 +467,152 @@ app.get("/scan-results", async (req, res) => {
 
     const collection = db.collection(COLLECTION_NAME);
     // Find all results for the given URL, sort by timestamp descending
-    const results = await collection
+    const rawResults = await collection // Renamed 'results' to 'rawResults'
       .find({ url: url })
       .sort({ timestamp: -1 })
       .toArray();
 
-    if (results.length === 0) {
+    if (rawResults.length === 0) {
       return res.status(404).json({
         message: "Nie znaleziono wyników skanowania dla podanego URL.",
         url: url,
       });
     }
 
+    const processedResults = rawResults.map((scanDoc) => {
+      const wpscanData = scanDoc.data;
+      if (!wpscanData || scanDoc.status !== "completed") {
+        return {
+          _id: scanDoc._id, // Add the _id here
+          original_timestamp: scanDoc.timestamp,
+          status: scanDoc.status,
+          error:
+            scanDoc.error ||
+            (scanDoc.status !== "completed"
+              ? `Scan status: ${scanDoc.status}`
+              : "WPScan data not available"),
+          outdated_plugins: [],
+          users: {},
+          all_vulnerabilities: [],
+        };
+      }
+
+      const outdated_plugins = wpscanData.plugins
+        ? Object.values(wpscanData.plugins).filter(
+            (plugin) => plugin.outdated === true
+          )
+        : [];
+
+      const users = wpscanData.users || {};
+
+      const all_vulnerabilities = [];
+      if (wpscanData.plugins) {
+        Object.values(wpscanData.plugins).forEach((plugin) => {
+          if (plugin.vulnerabilities && plugin.vulnerabilities.length > 0) {
+            const pluginIdentifier =
+              plugin.slug ||
+              plugin.name ||
+              Object.keys(wpscanData.plugins).find(
+                (key) => wpscanData.plugins[key] === plugin
+              );
+            all_vulnerabilities.push(
+              ...plugin.vulnerabilities.map((v) => ({
+                ...v,
+                source: `plugin: ${pluginIdentifier}`,
+              }))
+            );
+          }
+        });
+      }
+      if (
+        wpscanData.main_theme &&
+        wpscanData.main_theme.vulnerabilities &&
+        wpscanData.main_theme.vulnerabilities.length > 0
+      ) {
+        const themeIdentifier =
+          wpscanData.main_theme.slug || wpscanData.main_theme.name || "main";
+        all_vulnerabilities.push(
+          ...wpscanData.main_theme.vulnerabilities.map((v) => ({
+            ...v,
+            source: `theme: ${themeIdentifier}`,
+          }))
+        );
+      }
+      if (
+        wpscanData.version &&
+        wpscanData.version.vulnerabilities &&
+        wpscanData.version.vulnerabilities.length > 0
+      ) {
+        all_vulnerabilities.push(
+          ...wpscanData.version.vulnerabilities.map((v) => ({
+            ...v,
+            source: `WordPress core: ${wpscanData.version.number}`,
+          }))
+        );
+      }
+      if (wpscanData.interesting_findings) {
+        wpscanData.interesting_findings.forEach((finding) => {
+          if (
+            finding.type === "vulnerability" &&
+            finding.vulnerabilities &&
+            finding.vulnerabilities.length > 0
+          ) {
+            const findingIdentifier =
+              finding.to_s || finding.url || "general finding";
+            all_vulnerabilities.push(
+              ...finding.vulnerabilities.map((v) => ({
+                ...v,
+                source: `finding: ${findingIdentifier}`,
+              }))
+            );
+          }
+        });
+      }
+
+      return {
+        _id: scanDoc._id, // Add the _id here as well for completed scans
+        original_timestamp: scanDoc.timestamp,
+        status: scanDoc.status,
+        target_url: wpscanData.target_url || scanDoc.url,
+        effective_url: wpscanData.effective_url,
+        outdated_plugins,
+        users,
+        all_vulnerabilities,
+        wordpress_version: wpscanData.version
+          ? {
+              number: wpscanData.version.number,
+              status: wpscanData.version.status,
+              interesting_entries: wpscanData.version.interesting_entries,
+              confidence: wpscanData.version.confidence,
+            }
+          : null,
+        main_theme_info: wpscanData.main_theme
+          ? {
+              slug: wpscanData.main_theme.slug,
+              name: wpscanData.main_theme.name,
+              style_name: wpscanData.main_theme.style_name,
+              location: wpscanData.main_theme.location,
+              latest_version: wpscanData.main_theme.latest_version,
+              outdated: wpscanData.main_theme.outdated,
+              version: wpscanData.main_theme.version,
+            }
+          : null,
+        counts: {
+          outdated_plugins: outdated_plugins.length,
+          users: Object.keys(users).length,
+          vulnerabilities: all_vulnerabilities.length,
+          plugins_found: wpscanData.plugins
+            ? Object.keys(wpscanData.plugins).length
+            : 0,
+        },
+      };
+    });
+
     res.json({
-      message: "Wyniki skanowania pobrane pomyślnie.",
+      message: "Wyniki skanowania przetworzone pomyślnie.",
       url: url,
-      count: results.length,
-      data: results,
+      count: processedResults.length,
+      data: processedResults,
     });
   } catch (error) {
     console.error("Błąd pobierania wyników skanowania:", error);

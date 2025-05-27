@@ -2,9 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
@@ -14,21 +26,27 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   ExternalLink,
   Calendar,
   Hash,
   Globe,
   FileText,
-  Check,
   Loader2,
   ChevronDown,
   Settings,
-  RefreshCw,
   Eye,
-  Clock,
   AlertCircle,
-  X,
+  ScanEye,
+  Wand2, // Added for Gemini AI
 } from "lucide-react";
 
 interface SearchResult {
@@ -45,6 +63,10 @@ interface SearchResult {
   category?: number;
   created_at?: string;
   errors?: string | null;
+  gemini_category?: string | null;
+  gemini_contact_message?: string | null;
+  gemini_email_html?: string | null;
+  gemini_payload_processed_at?: string | null;
 }
 
 export default function SearchResultDetailsPage() {
@@ -53,7 +75,13 @@ export default function SearchResultDetailsPage() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [processingWebsite, setProcessingWebsite] = useState(false);
+  const [scanData, setScanData] = useState<any | null>(null);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  // const [generatedEmail, setGeneratedEmail] = useState<string | null>(null); // No longer needed for direct display
+  const [generatingEmail, setGeneratingEmail] = useState(false);
+  const [geminiError, setGeminiError] = useState<string | null>(null);
+  const [emailPreviewOpen, setEmailPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -61,9 +89,21 @@ export default function SearchResultDetailsPage() {
     }
   }, [params.id]);
 
+  useEffect(() => {
+    if (result?.link) {
+      loadScanResults(result.link);
+    }
+  }, [result?.link]);
+
   const loadResultDetails = async (id: string) => {
     try {
       setLoading(true);
+      setResult(null); // Reset previous result
+      setScanData(null); // Reset previous scan data
+      // setGeneratedEmail(null); // No longer needed
+      setError(null);
+      setScanError(null);
+      setGeminiError(null); // Reset gemini error
       const response = await fetch(`/api/search/result/${id}`);
 
       if (response.ok) {
@@ -80,100 +120,89 @@ export default function SearchResultDetailsPage() {
     }
   };
 
-  const processWebsite = async () => {
-    if (!result?.id || !result?.link) return;
+  const loadScanResults = async (url: string) => {
+    if (!url) return;
+    try {
+      setScanLoading(true);
+      setScanError(null);
+      const response = await fetch(
+        `http://localhost:4000/scan-results?url=${encodeURIComponent(url)}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setScanData(data);
+      } else {
+        const errorData = await response.text();
+        setScanError(
+          `Nie udało się załadować wyników skanowania (status: ${response.status}). ${errorData}`
+        );
+      }
+    } catch (err) {
+      setScanError("Wystąpił błąd podczas ładowania wyników skanowania.");
+      console.error("Error loading scan results:", err);
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
+  const handleGenerateEmail = async () => {
+    if (!scanData || !scanData.data || scanData.data.length === 0) {
+      setGeminiError(
+        "Brak danych skanowania lub wyników skanowania do wygenerowania emaila."
+      );
+      return;
+    }
+    // The scanData from WPScan server is an object with a 'data' array of scan documents.
+    // The history_scrapped.id is what we need for the SQLite update.
+    if (!result || typeof result.id === "undefined") {
+      setGeminiError(
+        "Brak ID wyniku wyszukiwania (history_scrapped.id). Nie można zapisać emaila."
+      );
+      return;
+    }
+
+    setGeneratingEmail(true);
+    // setGeneratedEmail(null); // No longer needed
+    setGeminiError(null);
+
+    // The prompt now expects a JSON response from Gemini
+    const prompt = `Zwróć JSON z poprawna struktura z następującymi kluczami: "category" (string - kategoria strony na podstawie jej treści, np. "Sklep internetowy - odzież", "Blog technologiczny", "Hotel/Turystyka"), "contact" (object z kluczem "message": string - informacja o znalezionych danych kontaktowych lub informacja o ich braku), oraz "email_content" (object z kluczem "html": string - treść emaila w formacie HTML). Email powinien być skierowany do właściciela witryny, opisywać podatności na atak na podstawie poniższego JSON-a z danymi skanowania. To pierwszy email do klienta, mający na celu nawiązanie współpracy. Powinien zawierać tabelkę z nieaktualnymi pluginami) (nazwa, zainstalowana wersja, najnowsza wersja). Jeśli API ujawnia użytkowników, wskaż to jako zagrożenie. Podkreśl znaczenie bezpieczeństwa witryny w branży klienta (określonej przez Ciebie w polu "category"). Wskaż kluczowe problemy, zasugeruj kontakt w celu omówienia szczegółów lub zaoferowania pomocy. Email powinien wzbudzić świadomość ryzyka włamania lub wycieku danych. Zaznacz, że na życzenie klienta możesz przygotować darmowy, szczegółowy raport podatności. Email ma być gotowy do wysłania. \n\nJSON z danymi skanowania (użyj go do analizy i treści emaila):\n${JSON.stringify(
+      scanData,
+      null,
+      2
+    )}`;
 
     try {
-      setProcessingWebsite(true);
-
-      // Set status to "w trakcie" (1) first
-      const startResponse = await fetch("/api/search", {
-        method: "PATCH",
+      console.log(prompt);
+      const response = await fetch("/api/generate-email", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id: result.id, processed: 1 }),
+        body: JSON.stringify({ prompt, historyId: result.id }), // Use result.id as historyId
       });
 
-      if (startResponse.ok) {
-        setResult((prev) => (prev ? { ...prev, processed: 1 } : null));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Nie udało się wygenerować emaila.");
       }
 
-      try {
-        // Send POST request to external scan service with timeout
-        const controller = new AbortController();
+      await response.json(); // Expects { analysis: { category: ..., contact: ..., email_content: ... } }
 
-        const scanResponse = await fetch("http://localhost:4000/scan", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            url: result.link,
-            callbackUrl: "http://localhost:3000/save",
-          }),
-          signal: controller.signal,
-        });
-
-        if (scanResponse.ok) {
-          console.log("Scan request sent successfully");
-          // Status will be updated by callback to 2 (zakończone) or 3 (błąd)
-        } else {
-          console.error("Failed to send scan request:", scanResponse.status);
-          throw new Error(
-            `HTTP ${scanResponse.status}: ${scanResponse.statusText}`
-          );
-        }
-      } catch (scanError) {
-        console.error("Error connecting to scan service:", scanError);
-
-        let errorMessage = "Błąd połączenia ze skanerem";
-        if (scanError instanceof Error) {
-          if (scanError.name === "AbortError") {
-            errorMessage = "Przekroczono limit czasu połączenia (10s)";
-          } else if (scanError.message.includes("fetch")) {
-            errorMessage = "Skaner niedostępny (http://localhost:4000)";
-          } else {
-            errorMessage = scanError.message;
-          }
-        }
-
-        // Set status to error (3)
-        const errorResponse = await fetch("/api/search", {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: result.id, processed: 3 }),
-        });
-
-        if (errorResponse.ok) {
-          setResult((prev) => (prev ? { ...prev, processed: 3 } : null));
-        }
-
-        // Show user-friendly error message
-        alert(`Błąd przetwarzania: ${errorMessage}`);
+      // Backend now handles saving. We just need to refresh the data to see the updates.
+      if (params.id) {
+        loadResultDetails(params.id as string);
       }
-    } catch (error) {
-      console.error("Error processing website:", error);
-      // Set status to error (3)
-      try {
-        const errorResponse = await fetch("/api/search", {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: result.id, processed: 3 }),
-        });
-
-        if (errorResponse.ok) {
-          setResult((prev) => (prev ? { ...prev, processed: 3 } : null));
-        }
-      } catch (updateError) {
-        console.error("Error updating status to error:", updateError);
-      }
+      // If you want to show an immediate success message or the raw analysis, you can use `data.analysis` here.
+      // For now, we rely on loadResultDetails to update the `result` state.
+    } catch (error: any) {
+      console.error("Error processing Gemini analysis:", error);
+      setGeminiError(
+        error.message ||
+          "Wystąpił nieoczekiwany błąd podczas generowania emaila."
+      );
     } finally {
-      setProcessingWebsite(false);
+      setGeneratingEmail(false);
     }
   };
 
@@ -233,55 +262,26 @@ export default function SearchResultDetailsPage() {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant={
-                  result.processed === 2
-                    ? "default"
-                    : result.processed === 3
-                    ? "destructive"
-                    : "outline"
-                }
-                disabled={processingWebsite}
-              >
-                {processingWebsite ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Przetwarzanie...
-                  </>
-                ) : result.processed === 0 ? (
-                  <>
-                    <X className="h-4 w-4 mr-2" />
-                    Nieprzetworzone
-                  </>
-                ) : result.processed === 1 ? (
-                  <>
-                    <Clock className="h-4 w-4 mr-2" />W trakcie
-                  </>
-                ) : result.processed === 2 ? (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Zakończone
-                  </>
-                ) : result.processed === 3 ? (
-                  <>
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    Błąd
-                  </>
-                ) : (
-                  <>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Akcje
-                  </>
-                )}
+              <Button variant="outline">
+                <Settings className="h-4 w-4 mr-2" />
+                Akcje
                 <ChevronDown className="h-4 w-4 ml-2" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => processWebsite()}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Przetwórz stronę
+              <DropdownMenuItem
+                onClick={handleGenerateEmail}
+                disabled={
+                  generatingEmail || !scanData || scanLoading || !!scanError
+                }
+              >
+                {generatingEmail ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4 mr-2" />
+                )}
+                Pobierz Analizę AI
               </DropdownMenuItem>
-
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <a
@@ -362,6 +362,158 @@ export default function SearchResultDetailsPage() {
               <Separator />
             </CardContent>
           </Card>
+
+          {/* Scan Results Accordion */}
+          {result?.link && (
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="scan-results">
+                <Card>
+                  <AccordionTrigger className="w-full px-6 py-4 hover:no-underline">
+                    <div className="flex items-center gap-2 w-full">
+                      <ScanEye className="h-5 w-5" />
+                      <div className="flex flex-col items-start">
+                        <CardTitle className="text-lg">
+                          Wyniki Skanowania Strony
+                        </CardTitle>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <CardContent className="pt-4">
+                      {scanLoading && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Ładowanie wyników skanowania...
+                        </div>
+                      )}
+                      {scanError && (
+                        <div className="text-red-600">
+                          <AlertCircle className="h-4 w-4 inline mr-1" />
+                          {scanError}
+                        </div>
+                      )}
+                      {scanData && !scanLoading && !scanError && (
+                        <pre className="text-sm bg-muted p-4 rounded-md overflow-x-auto">
+                          {JSON.stringify(scanData, null, 2)}
+                        </pre>
+                      )}
+                      {!scanData && !scanLoading && !scanError && (
+                        <p className="text-muted-foreground">
+                          Brak wyników skanowania do wyświetlenia lub strona nie
+                          została jeszcze przetworzona.
+                        </p>
+                      )}
+                    </CardContent>
+                  </AccordionContent>
+                </Card>
+              </AccordionItem>
+            </Accordion>
+          )}
+
+          {/* Gemini AI Analysis Section */}
+          {(generatingEmail ||
+            geminiError ||
+            result?.gemini_category ||
+            result?.gemini_contact_message ||
+            result?.gemini_email_html) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wand2 className="h-5 w-5" />
+                  Analiza AI (Gemini)
+                </CardTitle>
+                {result?.gemini_payload_processed_at && (
+                  <CardDescription>
+                    Ostatnia analiza:{" "}
+                    {new Date(
+                      result.gemini_payload_processed_at
+                    ).toLocaleString("pl-PL")}
+                  </CardDescription>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {generatingEmail && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Przetwarzanie danych z AI...
+                  </div>
+                )}
+                {geminiError && (
+                  <div className="text-red-500">
+                    <AlertCircle className="h-4 w-4 inline mr-1" />
+                    Błąd analizy AI: {geminiError}
+                  </div>
+                )}
+                {!generatingEmail && !geminiError && (
+                  <>
+                    {result?.gemini_category && (
+                      <div>
+                        <h4 className="font-semibold text-md mb-1">
+                          Sugerowana Kategoria Strony:
+                        </h4>
+                        <p className="text-sm bg-muted p-2 rounded-md">
+                          {result.gemini_category}
+                        </p>
+                      </div>
+                    )}
+                    {result?.gemini_contact_message && (
+                      <div>
+                        <h4 className="font-semibold text-md mb-1">
+                          Informacje Kontaktowe (wg AI):
+                        </h4>
+                        <p className="text-sm bg-muted p-2 rounded-md">
+                          {result.gemini_contact_message}
+                        </p>
+                      </div>
+                    )}
+                    {result?.gemini_email_html && (
+                      <div>
+                        <h4 className="font-semibold text-md mb-1">
+                          Sugerowana Treść Email (HTML):
+                        </h4>
+                        <Dialog
+                          open={emailPreviewOpen}
+                          onOpenChange={setEmailPreviewOpen}
+                        >
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <Eye className="h-4 w-4 mr-2" />
+                              Podgląd Emaila
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>
+                                Podgląd Wygenerowanego Emaila
+                              </DialogTitle>
+                              <DialogDescription>
+                                Tak może wyglądać email wygenerowany przez AI.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div
+                              className="mt-4 prose prose-sm max-w-none dark:prose-invert"
+                              dangerouslySetInnerHTML={{
+                                __html: result.gemini_email_html,
+                              }}
+                            />
+                          </DialogContent>
+                        </Dialog>
+                        {/* Optionally, show a snippet or a textarea for the HTML if needed, but preview is better */}
+                        {/* <Textarea value={result.gemini_email_html} readOnly rows={10} className="mt-2 w-full text-xs bg-muted rounded-md" /> */}
+                      </div>
+                    )}
+                    {!result?.gemini_category &&
+                      !result?.gemini_contact_message &&
+                      !result?.gemini_email_html && (
+                        <p className="text-muted-foreground">
+                          Brak danych z analizy AI do wyświetlenia.
+                        </p>
+                      )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}
