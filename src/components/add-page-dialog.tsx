@@ -12,7 +12,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 
@@ -29,7 +28,6 @@ export function AddPageDialog({ onPageAdded }: AddPageDialogProps) {
   const [formData, setFormData] = useState({
     title: "",
     link: "",
-    snippet: "",
     search_query: "",
     category: 2, // Default category for manual entries
   });
@@ -56,11 +54,10 @@ export function AddPageDialog({ onPageAdded }: AddPageDialogProps) {
         setFormData({
           title: "",
           link: "",
-          snippet: "",
           search_query: "",
           category: 2,
         });
-        
+
         // Call callback to refresh parent component
         if (onPageAdded) {
           onPageAdded();
@@ -152,7 +149,9 @@ export function AddPageDialog({ onPageAdded }: AddPageDialogProps) {
               id="search_query"
               placeholder="Fraza, dla której ta strona jest wynikiem"
               value={formData.search_query}
-              onChange={(e) => handleInputChange("search_query", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("search_query", e.target.value)
+              }
               disabled={loading}
               required
             />
@@ -168,20 +167,6 @@ export function AddPageDialog({ onPageAdded }: AddPageDialogProps) {
               value={formData.title}
               onChange={(e) => handleInputChange("title", e.target.value)}
               disabled={loading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="snippet" className="text-sm font-medium">
-              Opis
-            </label>
-            <Textarea
-              id="snippet"
-              placeholder="Krótki opis strony (opcjonalnie)"
-              value={formData.snippet}
-              onChange={(e) => handleInputChange("snippet", e.target.value)}
-              disabled={loading}
-              rows={3}
             />
           </div>
 

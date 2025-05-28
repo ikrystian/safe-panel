@@ -1,15 +1,14 @@
-
-
 Majac ponizszy kod json ze statystykami napisz maila w ktorym opisujesz podatnosci na jakie narazona jest strona.
 Zanzacz jak bardzo wazne jest bezpieczenstwo w branzy beuty w ktorej pracuje klient.
+Zaznacz ze moge przygotoawac za darmo szczegolowy raport opisujacy podatnosci oraz na zyczenie mozemy zajac sie zabezpieczen i obsluga strony. Napisz maila tak aby klient chcial zdecydowac sie na wspolprace ze mna.
+Zaznaczyc ze mail jest wazny, powazny i nie jest fakiem ani newsletterem podaj kilku nazwy uzytkownikow imiona, nazwiska z wp-json zwracajac uwage ze ulatwia to atak wprzez wp-admin.
 Stworz tabelke z nazwa pluginu, zainstalowana wersje oraz ktore sa najnowsze.
-Zaznacz ze moge przygotoawac za darmo szczegolowy raport opisujacy podatnosci. Napisz maila tak aby klient chcial zdecydowac sie na wspolprace ze mna.
-Dodaj ze w obecnych czasach gdzie AI jest na wysokim poziomie nie mozna sobie pozwolic na jakiekolwiek luki w zabezpieczeniach, poniewaz takie strony sa najbardziej podatne na ataki i jest to realne zagrozenie.
-Zaznaczyc ze mail jest wazny, powazny i nie jest fakiem ani newsletterem podaj kilku nazwy uzytkownikow imiona, nazwiska i maile z wp-json zwracajac uwage ze ulatwia to atak wprzez wp-admin.
 Nie zaznaczaj ze kontaktowalem sie wczesniej z klientem.
 Nie wspominaj o readme.
+Dodaj ze w obecnych czasach gdzie AI jest na wysokim poziomie nie mozna sobie pozwolic na jakiekolwiek luki w zabezpieczeniach, poniewaz takie strony sa najbardziej podatne na ataki i jest to realne zagrozenie.
 Dodaj ze dodatkowo moge poprawic bledy w kodzie zrodlowym strony, wcag 2.0, jako profesjonalisci gwarantujemy  podjecie akcji w przeciagu 24 godzin.
-Nie dodawaj stopki.
+Nie dodawaj stopki ani podpisu.
+Nie wspominaj o otwartej rejestracji klientow.
 Mail ma byc zwiezly.
 {
   "_id": { "$oid": "6834c518789b70a89fab2c84" },

@@ -18,6 +18,14 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const AI_MODELS = [
+  { value: "openai/gpt-4o-mini", label: "OpenAI GPT-4 Mini" },
+  {
+    value: "google/gemini-2.5-flash-preview-05-20:thinking",
+    label: "Google Gemini 2.5 thinking",
+  },
+  { value: "anthropic/claude-sonnet-4", label: "Claude Sonnet 4" },
+  { value: "google/gemini-2.5-pro-preview", label: "Gemini 2.5 Pro" },
+  { value: "openai/gpt-4.1", label: "GPT-4.1" },
   {
     value: "deepseek/deepseek-chat-v3-0324:free",
     label: "DeepSeek Chat V3 (Free)",

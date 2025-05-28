@@ -20,19 +20,11 @@ interface SearchResult {
   search_query: string;
   title?: string;
   link?: string;
-  snippet?: string;
-  position?: number;
   search_date?: string;
   user_id?: string;
-  serpapi_position?: number;
   processed?: number;
   category?: number;
   created_at?: string;
-  errors?: string | null;
-  gemini_category?: string | null;
-  gemini_contact_message?: string | null;
-  gemini_email_html?: string | null;
-  gemini_payload_processed_at?: string | null;
 }
 
 export default function SearchResultDetailsPage() {

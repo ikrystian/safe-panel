@@ -37,11 +37,8 @@ function initializeTables() {
       search_query TEXT NOT NULL,
       title TEXT,
       link TEXT,
-      snippet TEXT,
-      position INTEGER,
       search_date DATETIME DEFAULT CURRENT_TIMESTAMP,
       user_id TEXT,
-      serpapi_position INTEGER,
       processed INTEGER DEFAULT 0,
       category INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -75,38 +72,7 @@ function initializeTables() {
     // Column already exists, ignore error
   }
 
-  // Add WordPress fetch status columns if they don't exist (for existing databases)
-  try {
-    db.exec(`ALTER TABLE history_scrapped ADD COLUMN wp_fetch_status TEXT DEFAULT NULL`);
-  } catch (error) {
-    // Column already exists, ignore error
-  }
 
-  try {
-    db.exec(`ALTER TABLE history_scrapped ADD COLUMN wp_fetch_error TEXT DEFAULT NULL`);
-  } catch (error) {
-    // Column already exists, ignore error
-  }
-
-  try {
-    db.exec(`ALTER TABLE history_scrapped ADD COLUMN wp_fetch_attempted_at DATETIME DEFAULT NULL`);
-  } catch (error) {
-    // Column already exists, ignore error
-  }
-
-  // Add errors column to history_scrapped if it doesn't exist (for existing databases)
-  try {
-    db.exec(`ALTER TABLE history_scrapped ADD COLUMN errors TEXT DEFAULT NULL`);
-  } catch (error) {
-    // Column already exists, ignore error
-  }
-
-  // Add meta_generator column to history_scrapped if it doesn't exist
-  try {
-    db.exec(`ALTER TABLE history_scrapped ADD COLUMN meta_generator TEXT DEFAULT NULL`);
-  } catch (error) {
-    // Column already exists, ignore error
-  }
 
   // Create index for better performance
   db.exec(`
@@ -122,24 +88,11 @@ export interface SearchResult {
   search_query: string;
   title?: string;
   link?: string;
-  snippet?: string;
-  position?: number;
   search_date?: string;
   user_id?: string;
-  serpapi_position?: number;
   processed?: number;
   category?: number;
   created_at?: string;
-  wp_fetch_status?: string | null;
-  wp_fetch_error?: string | null;
-  wp_fetch_attempted_at?: string | null;
-  errors?: string | null;
-  // gemini_generated_email?: string | null; // Old, to be removed or repurposed
-  // gemini_email_generated_at?: string | null; // Old, to be removed or repurposed
-  gemini_category?: string | null; // New
-  gemini_contact_message?: string | null; // New
-  gemini_email_html?: string | null; // New
-  gemini_payload_processed_at?: string | null; // New
 }
 
 export interface SearchPagination {
@@ -162,9 +115,8 @@ export class SearchResultsRepository {
   insertSearchResults(results: SearchResult[]): void {
     const stmt = this.db.prepare(`
       INSERT INTO history_scrapped (
-        search_query, title, link, snippet,
-        position, user_id, serpapi_position, processed, category
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        search_query, title, link, user_id, processed, category
+      ) VALUES (?, ?, ?, ?, ?, ?)
     `);
 
     const insertMany = this.db.transaction((results: SearchResult[]) => {
@@ -173,10 +125,7 @@ export class SearchResultsRepository {
           result.search_query,
           result.title,
           result.link,
-          result.snippet,
-          result.position,
           result.user_id,
-          result.serpapi_position,
           result.processed || 0,
           result.category || 0
         );
@@ -199,7 +148,7 @@ export class SearchResultsRepository {
       params.push(userId);
     }
 
-    sql += ` ORDER BY created_at DESC, serpapi_position ASC`;
+    sql += ` ORDER BY created_at DESC`;
 
     const stmt = this.db.prepare(sql);
     const results = stmt.all(...params) as SearchResult[];
@@ -224,10 +173,10 @@ export class SearchResultsRepository {
   // Get search result by ID
   getSearchResultById(id: number, userId?: string): SearchResult | null {
     let sql = `
-      SELECT id, search_query, title, link, snippet, position, search_date, user_id, serpapi_position, processed, category, created_at, wp_fetch_status, wp_fetch_error, wp_fetch_attempted_at, errors, gemini_category, gemini_contact_message, gemini_email_html, gemini_payload_processed_at 
+      SELECT id, search_query, title, link, search_date, user_id, processed, category, created_at
       FROM history_scrapped
       WHERE id = ?
-    `; // Explicitly listed columns to include new Gemini fields
+    `;
     const params: any[] = [id];
 
     if (userId) {
@@ -241,24 +190,7 @@ export class SearchResultsRepository {
     return result;
   }
 
-  // Update generated email for a specific result - REPURPOSED for new Gemini data structure
-  updateGeminiAnalysisData(
-    id: number, 
-    geminiCategory: string | null,
-    geminiContactMessage: string | null,
-    geminiEmailHtml: string | null,
-    timestamp: string
-  ): void {
-    const stmt = this.db.prepare(`
-      UPDATE history_scrapped
-      SET gemini_category = ?, 
-          gemini_contact_message = ?, 
-          gemini_email_html = ?, 
-          gemini_payload_processed_at = ?
-      WHERE id = ?
-    `);
-    stmt.run(geminiCategory, geminiContactMessage, geminiEmailHtml, timestamp, id);
-  }
+
 
   // Get all search queries for a user
   getSearchHistory(userId?: string): { search_query: string; count: number; last_search: string }[] {
@@ -388,131 +320,36 @@ export class SearchResultsRepository {
     return stmt.all(userId) as SearchPagination[];
   }
 
-  // WordPress Users methods - REMOVED
-  // insertWordPressUsers(users: WordPressUser[]): void {
-  //   const stmt = this.db.prepare(`
-  //     INSERT INTO wordpress_users (
-  //       search_result_id, wp_user_id, name, slug
-  //     ) VALUES (?, ?, ?, ?)
-  //   `);
-
-  //   const insertMany = this.db.transaction((users: WordPressUser[]) => {
-  //     for (const user of users) {
-  //       stmt.run(
-  //         user.search_result_id,
-  //         user.wp_user_id,
-  //         user.name,
-  //         user.slug || null
-  //       );
-  //     }
-  //   });
-
-  //   insertMany(users);
-  // }
-
-  // getWordPressUsersBySearchResultId(searchResultId: number): WordPressUser[] {
-  //   const stmt = this.db.prepare(`
-  //     SELECT * FROM wordpress_users
-  //     WHERE search_result_id = ?
-  //     ORDER BY name ASC
-  //   `);
-  //   return stmt.all(searchResultId) as WordPressUser[];
-  // }
-
-  // deleteWordPressUsersBySearchResultId(searchResultId: number): void {
-  //   const stmt = this.db.prepare(`
-  //     DELETE FROM wordpress_users
-  //     WHERE search_result_id = ?
-  //   `);
-  //   stmt.run(searchResultId);
-  // }
-
-  // hasWordPressUsers(searchResultId: number): boolean {
-  //   const stmt = this.db.prepare(`
-  //     SELECT COUNT(*) as count FROM wordpress_users
-  //     WHERE search_result_id = ?
-  //   `);
-  //   const result = stmt.get(searchResultId) as { count: number };
-  //   return result.count > 0;
-  // }
-
-  // Update WordPress fetch status
-  updateWordPressFetchStatus(
-    searchResultId: number,
-    status: 'success' | 'error' | 'no_users' | 'not_wordpress',
-    error?: string
-  ): void {
-    const stmt = this.db.prepare(`
-      UPDATE history_scrapped
-      SET wp_fetch_status = ?, wp_fetch_error = ?, wp_fetch_attempted_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    stmt.run(status, error || null, searchResultId);
-  }
-
-  // Add error to the errors field (serialized JSON)
-  addError(searchResultId: number, errorType: string, errorMessage: string): void {
-    // Get current errors
-    const getStmt = this.db.prepare(`SELECT errors FROM history_scrapped WHERE id = ?`);
-    const result = getStmt.get(searchResultId) as { errors: string | null };
-
-    let errors: any[] = [];
-    if (result.errors) {
-      try {
-        errors = JSON.parse(result.errors);
-      } catch (e) {
-        errors = [];
-      }
-    }
-
-    // Add new error
-    errors.push({
-      type: errorType,
-      message: errorMessage,
-      timestamp: new Date().toISOString()
-    });
-
-    // Update errors field
-    const updateStmt = this.db.prepare(`
-      UPDATE history_scrapped
-      SET errors = ?
-      WHERE id = ?
-    `);
-    updateStmt.run(JSON.stringify(errors), searchResultId);
-  }
-
-  // Update meta_generator field for a specific result - REMOVED
-  // updateMetaGenerator(searchResultId: number, generators: string[] | null): void {
-  //   const stmt = this.db.prepare(`
-  //     UPDATE history_scrapped
-  //     SET meta_generator = ?
-  //     WHERE id = ?
-  //   `);
-  //   stmt.run(generators ? JSON.stringify(generators) : null, searchResultId);
-  // }
 
   // Insert single search result manually
   insertManualSearchResult(result: SearchResult): number {
     const stmt = this.db.prepare(`
       INSERT INTO history_scrapped (
-        search_query, title, link, snippet,
-        position, user_id, serpapi_position, processed, category
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        search_query, title, link, user_id, processed, category
+      ) VALUES (?, ?, ?, ?, ?, ?)
     `);
 
     const info = stmt.run(
       result.search_query,
       result.title || null,
       result.link || null,
-      result.snippet || null,
-      result.position || null,
       result.user_id,
-      result.serpapi_position || null,
       result.processed || 0,
       result.category || 0
     );
 
     return info.lastInsertRowid as number;
+  }
+
+  // Get one unprocessed or error result with link (public endpoint)
+  getOneUnprocessedResult(): SearchResult | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM history_scrapped
+      WHERE (processed = 0 OR processed = 3) AND link IS NOT NULL AND link != ''
+      ORDER BY created_at ASC
+      LIMIT 1
+    `);
+    return stmt.get() as SearchResult | null;
   }
 }
 

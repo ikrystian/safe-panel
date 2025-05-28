@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, link, snippet, search_query, category } = body;
+    const { title, link, search_query, category } = body;
 
     // Validation
     if (!link || !search_query) {
@@ -34,8 +34,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract domain from link for duplicate checking
-    const url = new URL(link);
-    const domain = url.hostname;
 
     // Check if domain already exists for this user
     const existingResult = searchResultsRepo.domainExists(link, userId);
@@ -51,10 +49,7 @@ export async function POST(request: NextRequest) {
       search_query: search_query.trim(),
       title: title?.trim() || undefined,
       link: link.trim(),
-      snippet: snippet?.trim() || undefined,
-      position: undefined,
       user_id: userId,
-      serpapi_position: undefined,
       processed: 0, // 0 = nieprzetworzone, 1 = w trakcie, 2 = zakończone, 3 = błąd
       category: category || 2, // Default category 2 for manual entries
     };

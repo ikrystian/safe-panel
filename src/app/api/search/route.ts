@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { searchResultsRepo, SearchResult } from '@/lib/database';
-import * as cheerio from 'cheerio'; // Import cheerio
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { GoogleSearch } = require('google-search-results-nodejs');
@@ -91,7 +90,7 @@ export async function POST(request: NextRequest) {
 
         // Process organic results
         if (data.organic_results && Array.isArray(data.organic_results)) {
-          for (const [index, result] of data.organic_results.entries()) {
+          for (const result of data.organic_results) {
             // Extract domain from the original link
             const originalLink = result.link || '';
             const domain = extractDomain(originalLink);
@@ -105,12 +104,9 @@ export async function POST(request: NextRequest) {
                 search_query: query,
                 title: result.title || '',
                 link: domain, // Store only the domain
-                snippet: result.snippet || '',
-                position: startPosition + index + 1,
                 user_id: userId,
-                serpapi_position: startPosition + index + 1,
-                processed: 0, // Mark as processed
-                category: 0  // Set category to 2
+                processed: 0, // Mark as unprocessed
+                category: 0  // Set category to 0
               };
 
               allResults.push(searchResult);

@@ -79,67 +79,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine status, errors, and wpscan_details based on scan result
+    // Determine status based on scan result
     let processed = 2; // Default to completed (2)
-    let errors = null;
-    let wpscanDetails = null;
 
     if (data.status === 'error') {
       processed = 3; // Error status (3)
-      errors = JSON.stringify({
-        type: 'wpscan_runner_error', // Error from the script running wpscan
-        message: data.error || 'Unknown error from scan runner',
-        timestamp: new Date().toISOString()
-      });
-      // wpscanDetails remains null as the scan itself might not have run or produced data
+      console.log(`Scan error for ${data.url}: ${data.error || 'Unknown error'}`);
     } else if (data.status === 'completed') {
       if (data.data) {
-        wpscanDetails = JSON.stringify(data.data); // Store the wpscan JSON output
-
         // Check for errors or aborted scan within the wpscan data itself
-        if (data.data.scan_aborted) {
+        if (data.data.scan_aborted || data.data.error) {
           processed = 3; // Error status (3)
-          errors = JSON.stringify({
-            type: 'wpscan_aborted',
-            message: data.data.scan_aborted,
-            timestamp: new Date().toISOString()
-          });
-        } else if (data.data.error) { // Assuming wpscan might have a top-level error field
-          processed = 3; // Error status (3)
-          errors = JSON.stringify({
-            type: 'wpscan_internal_error',
-            message: data.data.error,
-            timestamp: new Date().toISOString()
-          });
+          console.log(`Scan aborted or error for ${data.url}: ${data.data.scan_aborted || data.data.error}`);
         } else {
           processed = 2; // Completed successfully (2)
+          console.log(`Scan completed successfully for ${data.url}`);
         }
       } else {
         // Status is 'completed' but no 'data' field from wpscan
         processed = 3; // Error status (3)
-        errors = JSON.stringify({
-          type: 'missing_wpscan_data',
-          message: 'Scan reported as completed by runner, but wpscan output (data.data) is missing.',
-          timestamp: new Date().toISOString()
-        });
+        console.log(`Scan completed but no data for ${data.url}`);
       }
     } else {
       // Unknown status from server.js, treat as error or log warning
       console.warn(`Unknown status received: ${data.status} for URL: ${data.url}`);
       processed = 3; // Mark as error
-      errors = JSON.stringify({
-        type: 'unknown_status',
-        message: `Received unknown status '${data.status}' from scan runner.`,
-        timestamp: new Date().toISOString()
-      });
     }
 
     // Update the search result in the database
     const updateResult = db.prepare(`
       UPDATE history_scrapped
-      SET processed = ?, errors = ?, wpscan_details = ?, updated_at = CURRENT_TIMESTAMP
+      SET processed = ?
       WHERE id = ?
-    `).run(processed, errors, wpscanDetails, result.id);
+    `).run(processed, result.id);
 
     if (updateResult.changes === 0) {
       console.error(`Failed to update search result for ID: ${result.id}`);
@@ -149,13 +121,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Successfully updated result ${result.id} with status ${processed}. WPScan details stored: ${!!wpscanDetails}`);
+    console.log(`Successfully updated result ${result.id} with status ${processed}`);
 
     return NextResponse.json({
       message: 'Scan result processed successfully',
       resultId: result.id,
       status: processed === 2 ? 'completed' : 'error',
-      wpscan_details_stored: !!wpscanDetails,
       timestamp: new Date().toISOString()
     });
 

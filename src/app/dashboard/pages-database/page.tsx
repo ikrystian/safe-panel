@@ -50,15 +50,11 @@ interface SearchResult {
   search_query: string;
   title?: string;
   link?: string;
-  snippet?: string;
-  position?: number;
   search_date?: string;
   user_id?: string;
-  serpapi_position?: number;
   processed?: number;
   category?: number;
   created_at?: string;
-  errors?: string | null;
 }
 
 interface SearchHistory {

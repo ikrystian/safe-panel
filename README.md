@@ -43,18 +43,11 @@ history_scrapped {
   search_query: text (not null)
   title: text
   link: text
-  snippet: text
-  position: integer
   search_date: datetime (default current_timestamp)
   user_id: text
-  serpapi_position: integer
-  processed: integer (default 0)
+  processed: integer (default 0) -- 0=unprocessed, 1=processing, 2=completed, 3=error
   category: integer (default 0)
   created_at: datetime (default current_timestamp)
-  wp_fetch_status: text (default null) -- 'success', 'error', 'no_users', 'not_wordpress'
-  wp_fetch_error: text (default null) -- detailed error message
-  wp_fetch_attempted_at: datetime (default null) -- when fetch was attempted
-  errors: text (default null) -- serialized JSON array of errors
 }
 
 search_pagination {
@@ -340,6 +333,151 @@ Users can manually add pages to the database without using the search API:
 - **Loading States**: Shows progress during submission
 - **Success Animation**: Visual confirmation of successful addition
 - **Auto-refresh**: Updates page list after adding new page
+
+## Public API Endpoints
+
+The application provides public API endpoints that don't require authentication:
+
+### 🔗 Get Unprocessed Result
+
+**Endpoint**: `GET /api/public/unprocessed`
+
+Returns one unprocessed or error result with a link from the database.
+
+#### Response Format
+
+**Success (200)**:
+
+```json
+{
+  "success": true,
+  "result": {
+    "id": 1007,
+    "search_query": "trener personalny chełm",
+    "title": "kurs trenera personalnego",
+    "link": "https://alms.wsei.lublin.pl",
+    "search_date": "2025-05-26 12:16:22",
+    "processed": 0,
+    "category": 0,
+    "created_at": "2025-05-26 12:16:22"
+  }
+}
+```
+
+**No Results (404)**:
+
+```json
+{
+  "success": false,
+  "message": "No unprocessed results found"
+}
+```
+
+#### Features
+
+- **No Authentication Required**: Public endpoint accessible without login
+- **Filtered Results**: Only returns records where `processed = 0` (unprocessed) or `processed = 3` (error)
+- **Link Required**: Only returns records that have a valid link field
+- **Oldest First**: Returns the oldest unprocessed record (ordered by `created_at ASC`)
+- **Single Result**: Always returns maximum 1 result
+- **Complete Data**: Returns all available fields for the result
+
+#### Use Cases
+
+- **External Processing**: Allow external systems to fetch unprocessed pages
+- **Queue Processing**: Implement external queue processors
+- **Integration**: Connect with other tools and services
+- **Monitoring**: Check if there are unprocessed items in the system
+
+#### Example Usage
+
+```bash
+# Get one unprocessed result
+curl -X GET http://localhost:3001/api/public/unprocessed
+
+# With jq for formatted output
+curl -X GET http://localhost:3001/api/public/unprocessed | jq
+```
+
+### 📝 Update Processed Status
+
+**Endpoint**: `POST /api/public/unprocessed`
+
+Updates the processed status of a specific record to 2 (completed).
+
+#### Request Format
+
+```json
+{
+  "id": 1007
+}
+```
+
+#### Response Format
+
+**Success (200)**:
+
+```json
+{
+  "success": true,
+  "message": "Record processed status updated to completed",
+  "record": {
+    "id": 1007,
+    "link": "https://alms.wsei.lublin.pl",
+    "title": "kurs trenera personalnego",
+    "previous_processed": 0,
+    "new_processed": 2
+  }
+}
+```
+
+**Validation Error (400)**:
+
+```json
+{
+  "success": false,
+  "error": "ID is required and must be a number"
+}
+```
+
+**Record Not Found (404)**:
+
+```json
+{
+  "success": false,
+  "error": "Record not found"
+}
+```
+
+#### Features
+
+- **No Authentication Required**: Public endpoint accessible without login
+- **Status Update**: Changes `processed` field from any value to 2 (completed)
+- **Validation**: Validates that ID is provided and is a number
+- **Record Verification**: Checks if record exists before updating
+- **Response Details**: Returns previous and new processed status for confirmation
+- **Error Handling**: Comprehensive error messages for different failure scenarios
+
+#### Use Cases
+
+- **Mark as Processed**: External systems can mark records as completed after processing
+- **Workflow Integration**: Connect with external processing pipelines
+- **Status Tracking**: Update processing status from external tools
+- **Queue Management**: Mark items as completed in processing queues
+
+#### Example Usage
+
+```bash
+# Update record ID 1007 to processed status 2
+curl -X POST http://localhost:3001/api/public/unprocessed \
+  -H "Content-Type: application/json" \
+  -d '{"id": 1007}'
+
+# With jq for formatted output
+curl -X POST http://localhost:3001/api/public/unprocessed \
+  -H "Content-Type: application/json" \
+  -d '{"id": 1007}' | jq
+```
 
 ## Contributing
 

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { searchResultsRepo } from "@/lib/database"; // Import the SQLite repository
 
 export async function POST(request: Request) {
   try {
@@ -78,23 +77,8 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-    
-    // Save the structured data to SQLite
-    try {
-      const timestamp = new Date().toISOString();
-      // Using a more generic name for the method, assuming the table/columns can store generic analysis
-      searchResultsRepo.updateGeminiAnalysisData( // Assuming a method like updateAnalysisData exists or updateGeminiAnalysisData can be used generically
-        Number(historyId),
-        analysisData.category || null,
-        analysisData.contact?.message || null,
-        analysisData.email_content?.html || null,
-        timestamp
-      );
-      console.log(`Successfully saved analysis data for history_scrapped ID ${historyId}`);
-    } catch (dbError: any) {
-      console.error("Error saving analysis data to SQLite:", dbError);
-      // Log the error but still return the analysis to the user.
-    }
+
+    // Note: Analysis data is no longer saved to database as those fields have been removed
 
     return NextResponse.json({ analysis: analysisData });
 
@@ -104,7 +88,7 @@ export async function POST(request: Request) {
     if (error.message) {
       errorMessage = `Błąd: ${error.message}`;
     }
-    
+
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }
