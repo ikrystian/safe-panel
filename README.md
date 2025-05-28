@@ -8,6 +8,7 @@
 - 🔍 **Pages Database**: Advanced web search with SerpAPI integration (50 requests per search)
 - ➕ **Manual Page Addition**: Add pages manually without using search API
 - 🤖 **Automatic Processing**: Domain extraction, duplicate removal, and categorization during search
+- 🧠 **AI Test**: Interactive AI testing with internet connectivity via OpenRouter API
 - 💾 **SQLite Database**: Local data storage with search history and results
 - 🎨 **Modern UI**: Built with chadcn/ui components and Tailwind CSS
 - 📱 **Responsive**: Mobile-first responsive design
@@ -99,12 +100,13 @@ npm install
 cp .env.example .env.local
 ```
 
-Add your Clerk keys and SerpAPI key to `.env.local`:
+Add your Clerk keys, SerpAPI key, and OpenRouter API key to `.env.local`:
 
 ```
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
 CLERK_SECRET_KEY=your_clerk_secret_key
 SERPAPI_KEY=your_serpapi_key
+OPENROUTER_API_KEY=your_openrouter_api_key
 ```
 
 4. Run the development server:
@@ -478,6 +480,144 @@ curl -X POST http://localhost:3001/api/public/unprocessed \
   -H "Content-Type: application/json" \
   -d '{"id": 1007}' | jq
 ```
+
+## AI Test with Internet Connectivity (Implemented)
+
+The AI Test page provides a comprehensive interface for testing various AI models with optional internet connectivity through OpenRouter API:
+
+### 🧠 Model Selection
+
+- **Multiple AI Models**: Support for 15+ different AI models including:
+  - OpenAI GPT-4o, GPT-4o Mini, GPT-4.1
+  - Google Gemini 2.5 Pro, Gemini Flash 1.5
+  - Anthropic Claude Sonnet 4
+  - DeepSeek Chat V3, DeepSeek R1
+  - Perplexity Sonar models with built-in online capabilities
+  - Microsoft MAI, Mistral, Qwen models
+- **Free Models**: Many free-tier models available for testing
+- **Premium Models**: Access to advanced models with enhanced capabilities
+
+### 🌐 Internet Connectivity Features
+
+#### Web Search Integration
+
+- **Toggle Control**: Easy on/off switch for internet access
+- **Multiple Approaches**:
+  - `:online` suffix for supported models (OpenAI, Anthropic, Google)
+  - Web plugin for other models
+  - Native online models (Perplexity Sonar)
+- **Search Context Size**: Configurable context levels:
+  - **Low**: Minimal search context, suitable for basic queries
+  - **Medium**: Moderate search context, good for general queries
+  - **High**: Extensive search context, ideal for detailed research
+- **Max Results**: Control number of search results (1-10)
+
+#### Pricing Transparency
+
+- **Cost Display**: Shows token usage and estimated costs
+- **Context-based Pricing**: Different costs based on search context size
+- **Plugin Pricing**: $4 per 1000 results for web plugin usage
+
+### 📊 Response Features
+
+#### Rich Response Display
+
+- **Markdown Rendering**: Properly formatted responses with syntax highlighting
+- **Copy to Clipboard**: One-click copying of AI responses
+- **Real-time Streaming**: Live response generation display
+- **Error Handling**: Comprehensive error messages and validation
+
+#### Web Citations
+
+- **Source Links**: Clickable links to web sources used by AI
+- **Citation Metadata**: Title, URL, and content snippets
+- **Visual Indicators**: Globe icons and external link indicators
+- **Organized Display**: Clean, card-based layout for citations
+
+### 🔧 Technical Implementation
+
+#### API Integration
+
+- **OpenRouter API**: Unified interface for multiple AI providers
+- **Request Customization**: Dynamic request body based on model and settings
+- **Error Handling**: Robust error handling with detailed messages
+- **Response Processing**: Standardized response format with annotations
+
+#### Model-Specific Handling
+
+- **Online Models**: Automatic detection of models with built-in web capabilities
+- **Suffix Addition**: Automatic `:online` suffix for compatible models
+- **Plugin Fallback**: Web plugin for models without native online support
+- **Context Options**: Search context size for supported models
+
+### 🎯 Use Cases
+
+#### Research & Analysis
+
+- **Current Information**: Access to real-time web data
+- **Fact Checking**: Verify information with web sources
+- **Market Research**: Get latest market trends and data
+- **News Analysis**: Access current news and events
+
+#### Development & Testing
+
+- **API Testing**: Test different AI models and capabilities
+- **Prompt Engineering**: Experiment with prompts and web search
+- **Cost Analysis**: Compare costs across different models and settings
+- **Performance Testing**: Evaluate response quality and speed
+
+#### Content Creation
+
+- **Research-backed Content**: Create content with web-sourced information
+- **Current Events**: Write about latest developments
+- **Data-driven Insights**: Generate insights based on current data
+- **Competitive Analysis**: Research competitors and market trends
+
+### 🛡️ Security & Privacy
+
+#### API Key Management
+
+- **Environment Variables**: Secure storage of OpenRouter API key
+- **Server-side Processing**: API calls made from secure backend
+- **No Client Exposure**: API keys never exposed to client-side code
+
+#### User Authentication
+
+- **Protected Routes**: AI Test page requires authentication
+- **User Isolation**: Each user's usage is tracked separately
+- **Session Management**: Secure session handling via Clerk
+
+### 🎨 User Experience
+
+#### Intuitive Interface
+
+- **Clean Design**: Modern, responsive interface using chadcn/ui
+- **Visual Feedback**: Loading states, success indicators, error messages
+- **Responsive Layout**: Works on desktop, tablet, and mobile devices
+- **Accessibility**: Proper labels, keyboard navigation, screen reader support
+
+#### Advanced Controls
+
+- **Collapsible Settings**: Web search controls expand when enabled
+- **Smart Defaults**: Sensible default values for all settings
+- **Real-time Validation**: Immediate feedback on form inputs
+- **Persistent State**: Form state maintained during session
+
+### 📈 Monitoring & Analytics
+
+#### Usage Tracking
+
+- **Token Counting**: Display input, output, and total tokens
+- **Cost Calculation**: Show estimated costs for API usage
+- **Model Information**: Display which model was actually used
+- **Web Search Status**: Indicate when web search was enabled
+
+#### Performance Metrics
+
+- **Response Time**: Track how long requests take
+- **Success Rate**: Monitor API call success/failure rates
+- **Error Logging**: Detailed error logging for debugging
+- **Usage Statistics**: Track usage patterns and popular models
 
 ## Contributing
 

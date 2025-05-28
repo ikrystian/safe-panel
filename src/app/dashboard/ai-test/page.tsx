@@ -12,13 +12,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Bot, Send, Copy, Check } from "lucide-react";
+import {
+  Loader2,
+  Bot,
+  Send,
+  Copy,
+  Check,
+  Globe,
+  ExternalLink,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const AI_MODELS = [
   { value: "openai/gpt-4o-mini", label: "OpenAI GPT-4 Mini" },
+  { value: "openai/gpt-4o", label: "OpenAI GPT-4o" },
+  {
+    value: "openai/gpt-4o-mini-search-preview",
+    label: "GPT-4o Mini Search Preview",
+  },
   {
     value: "google/gemini-2.5-flash-preview-05-20:thinking",
     label: "Google Gemini 2.5 thinking",
@@ -26,6 +41,14 @@ const AI_MODELS = [
   { value: "anthropic/claude-sonnet-4", label: "Claude Sonnet 4" },
   { value: "google/gemini-2.5-pro-preview", label: "Gemini 2.5 Pro" },
   { value: "openai/gpt-4.1", label: "GPT-4.1" },
+  {
+    value: "perplexity/llama-3.1-sonar-small-128k-online",
+    label: "Perplexity Sonar Small (Online)",
+  },
+  {
+    value: "perplexity/llama-3.1-sonar-large-128k-online",
+    label: "Perplexity Sonar Large (Online)",
+  },
   {
     value: "deepseek/deepseek-chat-v3-0324:free",
     label: "DeepSeek Chat V3 (Free)",
@@ -78,6 +101,10 @@ export default function AITestPage() {
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  const [webSearch, setWebSearch] = useState(false);
+  const [searchContextSize, setSearchContextSize] = useState("medium");
+  const [maxResults, setMaxResults] = useState(5);
+  const [annotations, setAnnotations] = useState<any[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +118,7 @@ export default function AITestPage() {
     setError(null);
     setResponse("");
     setUsage(null);
+    setAnnotations([]);
 
     try {
       const res = await fetch("/api/ai-test", {
@@ -101,6 +129,9 @@ export default function AITestPage() {
         body: JSON.stringify({
           prompt: prompt.trim(),
           model: selectedModel,
+          webSearch,
+          searchContextSize,
+          maxResults,
         }),
       });
 
@@ -114,6 +145,7 @@ export default function AITestPage() {
 
       setResponse(data.response);
       setUsage(data.usage);
+      setAnnotations(data.annotations || []);
     } catch (err: any) {
       setError(err.message || "Wystąpił nieoczekiwany błąd");
     } finally {
@@ -136,6 +168,7 @@ export default function AITestPage() {
     setResponse("");
     setError(null);
     setUsage(null);
+    setAnnotations([]);
   };
 
   return (
@@ -147,7 +180,8 @@ export default function AITestPage() {
           AI Test
         </h1>
         <p className="text-muted-foreground">
-          Testuj różne modele AI z OpenRouter API
+          Testuj różne modele AI z OpenRouter API z opcjonalnym dostępem do
+          internetu
         </p>
       </div>
 
@@ -174,10 +208,71 @@ export default function AITestPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                otworz strone https://dev.gal-bud.pl/ i znajdz informacje
-                kontaktowe
+
+              {/* Web Search Controls */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label
+                      htmlFor="web-search"
+                      className="flex items-center gap-2"
+                    >
+                      <Globe className="h-4 w-4" />
+                      Wyszukiwanie internetowe
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Pozwól AI na dostęp do aktualnych informacji z internetu
+                    </p>
+                  </div>
+                  <Switch
+                    id="web-search"
+                    checked={webSearch}
+                    onCheckedChange={setWebSearch}
+                  />
+                </div>
+
+                {webSearch && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="search-context">
+                          Rozmiar kontekstu
+                        </Label>
+                        <Select
+                          value={searchContextSize}
+                          onValueChange={setSearchContextSize}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Niski</SelectItem>
+                            <SelectItem value="medium">Średni</SelectItem>
+                            <SelectItem value="high">Wysoki</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="max-results">Maks. wyników</Label>
+                        <Input
+                          id="max-results"
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={maxResults}
+                          onChange={(e) =>
+                            setMaxResults(parseInt(e.target.value) || 5)
+                          }
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Większy kontekst = więcej informacji, ale wyższy koszt
+                    </p>
+                  </div>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="prompt">Twój prompt</Label>
                 <Textarea
@@ -264,6 +359,41 @@ export default function AITestPage() {
                         Koszt: ${usage.total_cost}
                       </Badge>
                     )}
+                  </div>
+                )}
+
+                {annotations && annotations.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Globe className="h-4 w-4" />
+                      Źródła internetowe:
+                    </div>
+                    <div className="space-y-2">
+                      {annotations.map((annotation, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start gap-2 p-2 bg-background border rounded-md text-sm"
+                        >
+                          <ExternalLink className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <a
+                              href={annotation.url_citation?.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-medium text-primary hover:underline block truncate"
+                            >
+                              {annotation.url_citation?.title ||
+                                annotation.url_citation?.url}
+                            </a>
+                            {annotation.url_citation?.content && (
+                              <p className="text-muted-foreground text-xs line-clamp-2">
+                                {annotation.url_citation.content}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
