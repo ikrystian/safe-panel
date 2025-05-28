@@ -120,3 +120,92 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Markdown styles */
+.markdown {
+  @apply text-sm leading-relaxed;
+}
+
+.markdown h1 {
+  @apply text-2xl font-bold mt-6 mb-4 first:mt-0;
+}
+
+.markdown h2 {
+  @apply text-xl font-semibold mt-5 mb-3 first:mt-0;
+}
+
+.markdown h3 {
+  @apply text-lg font-medium mt-4 mb-2 first:mt-0;
+}
+
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  @apply font-medium mt-3 mb-2 first:mt-0;
+}
+
+.markdown p {
+  @apply mb-4 last:mb-0;
+}
+
+.markdown ul,
+.markdown ol {
+  @apply mb-4 pl-6;
+}
+
+.markdown ul {
+  @apply list-disc;
+}
+
+.markdown ol {
+  @apply list-decimal;
+}
+
+.markdown li {
+  @apply mb-1;
+}
+
+.markdown blockquote {
+  @apply border-l-4 border-border pl-4 italic my-4;
+}
+
+.markdown code {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.markdown pre {
+  @apply bg-muted p-4 rounded-md overflow-x-auto my-4;
+}
+
+.markdown pre code {
+  @apply bg-transparent p-0;
+}
+
+.markdown table {
+  @apply w-full border-collapse border border-border my-4;
+}
+
+.markdown th,
+.markdown td {
+  @apply border border-border px-3 py-2 text-left;
+}
+
+.markdown th {
+  @apply bg-muted font-medium;
+}
+
+.markdown a {
+  @apply text-primary underline hover:no-underline;
+}
+
+.markdown strong {
+  @apply font-semibold;
+}
+
+.markdown em {
+  @apply italic;
+}
+
+.markdown hr {
+  @apply border-t border-border my-6;
+}

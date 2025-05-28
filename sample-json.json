@@ -1,0 +1,709 @@
+
+
+Majac ponizszy kod json ze statystykami napisz maila w ktorym opisujesz podatnosci na jakie narazona jest strona.
+Zanzacz jak bardzo wazne jest bezpieczenstwo w branzy beuty w ktorej pracuje klient.
+Stworz tabelke z nazwa pluginu, zainstalowana wersje oraz ktore sa najnowsze.
+Zaznacz ze moge przygotoawac za darmo szczegolowy raport opisujacy podatnosci. Napisz maila tak aby klient chcial zdecydowac sie na wspolprace ze mna.
+Dodaj ze w obecnych czasach gdzie AI jest na wysokim poziomie nie mozna sobie pozwolic na jakiekolwiek luki w zabezpieczeniach, poniewaz takie strony sa najbardziej podatne na ataki i jest to realne zagrozenie.
+Zaznaczyc ze mail jest wazny, powazny i nie jest fakiem ani newsletterem podaj kilku nazwy uzytkownikow imiona, nazwiska i maile z wp-json zwracajac uwage ze ulatwia to atak wprzez wp-admin.
+Nie zaznaczaj ze kontaktowalem sie wczesniej z klientem.
+Nie wspominaj o readme.
+Dodaj ze dodatkowo moge poprawic bledy w kodzie zrodlowym strony, wcag 2.0, jako profesjonalisci gwarantujemy  podjecie akcji w przeciagu 24 godzin.
+Nie dodawaj stopki.
+Mail ma byc zwiezly.
+{
+  "_id": { "$oid": "6834c518789b70a89fab2c84" },
+  "url": "https://bdaesthetic.com/",
+  "timestamp": "2025-05-26T19:46:32.900Z",
+  "status": "completed",
+  "container": "wpscan-persistent",
+  "data": {
+    "banner": {
+      "description": "WordPress Security Scanner by the WPScan Team",
+      "version": "3.8.28",
+      "authors": ["@_WPScan_", "@ethicalhack3r", "@erwan_lr", "@firefart"],
+      "sponsor": "Sponsored by Automattic - https://automattic.com/"
+    },
+    "start_time": { "$numberInt": "1748288714" },
+    "start_memory": { "$numberInt": "49897472" },
+    "target_url": "https://bdaesthetic.com/",
+    "target_ip": "89.161.201.123",
+    "effective_url": "https://bdaesthetic.com/",
+    "interesting_findings": [
+      {
+        "url": "https://bdaesthetic.com/",
+        "to_s": "Headers",
+        "type": "headers",
+        "found_by": "Headers (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "confirmed_by": {},
+        "references": {},
+        "interesting_entries": ["server: IdeaWebServer/6.3.1"]
+      },
+      {
+        "url": "https://bdaesthetic.com/robots.txt",
+        "to_s": "robots.txt found: https://bdaesthetic.com/robots.txt",
+        "type": "robots_txt",
+        "found_by": "Robots Txt (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "confirmed_by": {},
+        "references": {},
+        "interesting_entries": []
+      },
+      {
+        "url": "https://bdaesthetic.com/xmlrpc.php",
+        "to_s": "XML-RPC seems to be enabled: https://bdaesthetic.com/xmlrpc.php",
+        "type": "xmlrpc",
+        "found_by": "Direct Access (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "confirmed_by": {},
+        "references": {
+          "url": ["http://codex.wordpress.org/XML-RPC_Pingback_API"],
+          "metasploit": [
+            "auxiliary/scanner/http/wordpress_ghost_scanner",
+            "auxiliary/dos/http/wordpress_xmlrpc_dos",
+            "auxiliary/scanner/http/wordpress_xmlrpc_login",
+            "auxiliary/scanner/http/wordpress_pingback_access"
+          ]
+        },
+        "interesting_entries": []
+      },
+      {
+        "url": "https://bdaesthetic.com/readme.html",
+        "to_s": "WordPress readme found: https://bdaesthetic.com/readme.html",
+        "type": "readme",
+        "found_by": "Direct Access (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "confirmed_by": {},
+        "references": {},
+        "interesting_entries": []
+      },
+      {
+        "url": "https://bdaesthetic.com/wp-content/mu-plugins/",
+        "to_s": "This site has 'Must Use Plugins': https://bdaesthetic.com/wp-content/mu-plugins/",
+        "type": "mu_plugins",
+        "found_by": "Direct Access (Aggressive Detection)",
+        "confidence": { "$numberInt": "80" },
+        "confirmed_by": {},
+        "references": {
+          "url": ["http://codex.wordpress.org/Must_Use_Plugins"]
+        },
+        "interesting_entries": []
+      },
+      {
+        "url": "https://bdaesthetic.com/wp-login.php?action=register",
+        "to_s": "Registration is enabled: https://bdaesthetic.com/wp-login.php?action=register",
+        "type": "registration",
+        "found_by": "Direct Access (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "confirmed_by": {},
+        "references": {},
+        "interesting_entries": []
+      },
+      {
+        "url": "https://bdaesthetic.com/wp-cron.php",
+        "to_s": "The external WP-Cron seems to be enabled: https://bdaesthetic.com/wp-cron.php",
+        "type": "wp_cron",
+        "found_by": "Direct Access (Aggressive Detection)",
+        "confidence": { "$numberInt": "60" },
+        "confirmed_by": {},
+        "references": {
+          "url": [
+            "https://www.iplocation.net/defend-wordpress-from-ddos",
+            "https://github.com/wpscanteam/wpscan/issues/1299"
+          ]
+        },
+        "interesting_entries": []
+      }
+    ],
+    "version": {
+      "number": "6.2.6",
+      "release_date": "2024-06-24",
+      "status": "outdated",
+      "found_by": "Most Common Wp Includes Query Parameter In Homepage (Passive Detection)",
+      "confidence": { "$numberInt": "100" },
+      "interesting_entries": [
+        "https://bdaesthetic.com/wp-includes/css/dist/block-library/style.min.css?ver=6.2.6"
+      ],
+      "confirmed_by": {
+        "Query Parameter In Install Page (Aggressive Detection)": {
+          "confidence": { "$numberInt": "100" },
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-includes/css/dashicons.min.css?ver=6.2.6",
+            "https://bdaesthetic.com/wp-includes/css/buttons.min.css?ver=6.2.6",
+            "https://bdaesthetic.com/wp-admin/css/forms.min.css?ver=6.2.6",
+            "https://bdaesthetic.com/wp-admin/css/l10n.min.css?ver=6.2.6",
+            "https://bdaesthetic.com/wp-admin/css/install.min.css?ver=6.2.6"
+          ]
+        }
+      },
+      "vulnerabilities": []
+    },
+    "main_theme": {
+      "slug": "bda",
+      "location": "https://bdaesthetic.com/wp-content/themes/bda/",
+      "latest_version": null,
+      "last_updated": null,
+      "outdated": false,
+      "readme_url": false,
+      "directory_listing": false,
+      "error_log_url": null,
+      "style_url": "https://bdaesthetic.com/wp-content/themes/bda/style.css",
+      "style_name": "Beauty Derm Aesthetic",
+      "style_uri": null,
+      "description": null,
+      "author": "Luckysem",
+      "author_uri": null,
+      "template": null,
+      "license": null,
+      "license_uri": null,
+      "tags": null,
+      "text_domain": null,
+      "found_by": "Urls In Homepage (Passive Detection)",
+      "confidence": { "$numberInt": "44" },
+      "interesting_entries": [],
+      "confirmed_by": {
+        "Urls In 404 Page (Passive Detection)": {
+          "confidence": { "$numberInt": "22" },
+          "interesting_entries": []
+        }
+      },
+      "vulnerabilities": [],
+      "version": {
+        "number": "1.0",
+        "confidence": { "$numberInt": "80" },
+        "found_by": "Style (Passive Detection)",
+        "interesting_entries": [
+          "https://bdaesthetic.com/wp-content/themes/bda/style.css, Match: 'Version: 1.0'"
+        ],
+        "confirmed_by": {}
+      },
+      "parents": []
+    },
+    "plugins": {
+      "accessible-poetry": {
+        "slug": "accessible-poetry",
+        "location": "https://bdaesthetic.com/wp-content/plugins/accessible-poetry/",
+        "latest_version": "5.4.0",
+        "last_updated": "2024-10-03T08:04:00.000Z",
+        "outdated": false,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "5.4.0",
+          "confidence": { "$numberInt": "80" },
+          "found_by": "Readme - Stable Tag (Aggressive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/accessible-poetry/readme.txt"
+          ],
+          "confirmed_by": {}
+        }
+      },
+      "contact-form-7": {
+        "slug": "contact-form-7",
+        "location": "https://bdaesthetic.com/wp-content/plugins/contact-form-7/",
+        "latest_version": "6.0.6",
+        "last_updated": "2025-04-10T06:47:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "5.8.3",
+          "confidence": { "$numberInt": "90" },
+          "found_by": "Query Parameter (Passive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/contact-form-7/includes/css/styles.css?ver=5.8.3"
+          ],
+          "confirmed_by": {
+            "Readme - Stable Tag (Aggressive Detection)": {
+              "confidence": { "$numberInt": "80" },
+              "interesting_entries": [
+                "https://bdaesthetic.com/wp-content/plugins/contact-form-7/readme.txt"
+              ]
+            }
+          }
+        }
+      },
+      "honeypot": {
+        "slug": "honeypot",
+        "location": "https://bdaesthetic.com/wp-content/plugins/honeypot/",
+        "latest_version": "2.2.11",
+        "last_updated": "2025-05-20T01:08:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "2.2.01",
+          "confidence": { "$numberInt": "80" },
+          "found_by": "Readme - Stable Tag (Aggressive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/honeypot/readme.txt"
+          ],
+          "confirmed_by": {}
+        }
+      },
+      "pixelyoursite": {
+        "slug": "pixelyoursite",
+        "location": "https://bdaesthetic.com/wp-content/plugins/pixelyoursite/",
+        "latest_version": "10.2.1",
+        "last_updated": "2025-05-07T09:24:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "9.5.5",
+          "confidence": { "$numberInt": "80" },
+          "found_by": "Readme - Stable Tag (Aggressive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/pixelyoursite/readme.txt"
+          ],
+          "confirmed_by": {}
+        }
+      },
+      "recaptcha-woo": {
+        "slug": "recaptcha-woo",
+        "location": "https://bdaesthetic.com/wp-content/plugins/recaptcha-woo/",
+        "latest_version": "1.4.1",
+        "last_updated": "2025-04-18T21:03:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "1.3.3",
+          "confidence": { "$numberInt": "50" },
+          "found_by": "Readme - ChangeLog Section (Aggressive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/recaptcha-woo/readme.txt"
+          ],
+          "confirmed_by": {}
+        }
+      },
+      "woo-inpost": {
+        "slug": "woo-inpost",
+        "location": "https://bdaesthetic.com/wp-content/plugins/woo-inpost/",
+        "latest_version": "1.4.1",
+        "last_updated": "2024-07-25T07:35:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "1.4.0",
+          "confidence": { "$numberInt": "100" },
+          "found_by": "Readme - Stable Tag (Aggressive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/woo-inpost/readme.txt"
+          ],
+          "confirmed_by": {
+            "Readme - ChangeLog Section (Aggressive Detection)": {
+              "confidence": { "$numberInt": "50" },
+              "interesting_entries": [
+                "https://bdaesthetic.com/wp-content/plugins/woo-inpost/readme.txt"
+              ]
+            }
+          }
+        }
+      },
+      "woo-product-bundle": {
+        "slug": "woo-product-bundle",
+        "location": "https://bdaesthetic.com/wp-content/plugins/woo-product-bundle/",
+        "latest_version": "8.2.7",
+        "last_updated": "2025-04-17T08:35:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "7.3.3",
+          "confidence": { "$numberInt": "100" },
+          "found_by": "Readme - Stable Tag (Aggressive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/woo-product-bundle/readme.txt"
+          ],
+          "confirmed_by": {
+            "Readme - ChangeLog Section (Aggressive Detection)": {
+              "confidence": { "$numberInt": "50" },
+              "interesting_entries": [
+                "https://bdaesthetic.com/wp-content/plugins/woo-product-bundle/readme.txt"
+              ]
+            }
+          }
+        }
+      },
+      "woo-product-slider-and-carousel-with-category": {
+        "slug": "woo-product-slider-and-carousel-with-category",
+        "location": "https://bdaesthetic.com/wp-content/plugins/woo-product-slider-and-carousel-with-category/",
+        "latest_version": "3.0.3",
+        "last_updated": "2025-05-15T13:51:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "2.8.1",
+          "confidence": { "$numberInt": "80" },
+          "found_by": "Readme - Stable Tag (Aggressive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/woo-product-slider-and-carousel-with-category/readme.txt"
+          ],
+          "confirmed_by": {}
+        }
+      },
+      "woo-save-abandoned-carts": {
+        "slug": "woo-save-abandoned-carts",
+        "location": "https://bdaesthetic.com/wp-content/plugins/woo-save-abandoned-carts/",
+        "latest_version": "8.7",
+        "last_updated": "2025-05-15T07:53:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "8.0.1",
+          "confidence": { "$numberInt": "100" },
+          "found_by": "Readme - Stable Tag (Aggressive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/woo-save-abandoned-carts/readme.txt"
+          ],
+          "confirmed_by": {
+            "Readme - ChangeLog Section (Aggressive Detection)": {
+              "confidence": { "$numberInt": "50" },
+              "interesting_entries": [
+                "https://bdaesthetic.com/wp-content/plugins/woo-save-abandoned-carts/readme.txt"
+              ]
+            }
+          }
+        }
+      },
+      "woocommerce": {
+        "slug": "woocommerce",
+        "location": "https://bdaesthetic.com/wp-content/plugins/woocommerce/",
+        "latest_version": "9.8.5",
+        "last_updated": "2025-05-12T11:44:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "6.6.1",
+          "confidence": { "$numberInt": "100" },
+          "found_by": "Query Parameter (Passive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/woocommerce/assets/js/frontend/add-to-cart.min.js?ver=6.6.1",
+            "https://bdaesthetic.com/wp-content/plugins/woocommerce/assets/js/frontend/woocommerce.min.js?ver=6.6.1",
+            "https://bdaesthetic.com/wp-content/plugins/woocommerce/assets/js/frontend/cart-fragments.min.js?ver=6.6.1"
+          ],
+          "confirmed_by": {
+            "Readme - Stable Tag (Aggressive Detection)": {
+              "confidence": { "$numberInt": "80" },
+              "interesting_entries": [
+                "https://bdaesthetic.com/wp-content/plugins/woocommerce/readme.txt"
+              ]
+            },
+            "Readme - ChangeLog Section (Aggressive Detection)": {
+              "confidence": { "$numberInt": "50" },
+              "interesting_entries": [
+                "https://bdaesthetic.com/wp-content/plugins/woocommerce/readme.txt"
+              ]
+            }
+          }
+        }
+      },
+      "woocommerce-google-adwords-conversion-tracking-tag": {
+        "slug": "woocommerce-google-adwords-conversion-tracking-tag",
+        "location": "https://bdaesthetic.com/wp-content/plugins/woocommerce-google-adwords-conversion-tracking-tag/",
+        "latest_version": "1.48.0",
+        "last_updated": "2025-05-22T04:50:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Urls In Homepage (Passive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [],
+        "confirmed_by": {
+          "Urls In 404 Page (Passive Detection)": {
+            "confidence": { "$numberInt": "80" },
+            "interesting_entries": []
+          }
+        },
+        "vulnerabilities": [],
+        "version": {
+          "number": "1.42.2",
+          "confidence": { "$numberInt": "100" },
+          "found_by": "Readme - Stable Tag (Aggressive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/wp-content/plugins/woocommerce-google-adwords-conversion-tracking-tag/readme.txt"
+          ],
+          "confirmed_by": {
+            "Readme - ChangeLog Section (Aggressive Detection)": {
+              "confidence": { "$numberInt": "50" },
+              "interesting_entries": [
+                "https://bdaesthetic.com/wp-content/plugins/woocommerce-google-adwords-conversion-tracking-tag/readme.txt"
+              ]
+            }
+          }
+        }
+      },
+      "wordpress-seo": {
+        "slug": "wordpress-seo",
+        "location": "https://bdaesthetic.com/wp-content/plugins/wordpress-seo/",
+        "latest_version": "25.1",
+        "last_updated": "2025-05-13T08:04:00.000Z",
+        "outdated": true,
+        "readme_url": null,
+        "directory_listing": null,
+        "error_log_url": null,
+        "found_by": "Comment (Passive Detection)",
+        "confidence": { "$numberInt": "30" },
+        "interesting_entries": [],
+        "confirmed_by": {},
+        "vulnerabilities": [],
+        "version": {
+          "number": "21.6",
+          "confidence": { "$numberInt": "100" },
+          "found_by": "Comment (Passive Detection)",
+          "interesting_entries": [
+            "https://bdaesthetic.com/, Match: 'optimized with the Yoast SEO plugin v21.6 -'"
+          ],
+          "confirmed_by": {
+            "Readme - Stable Tag (Aggressive Detection)": {
+              "confidence": { "$numberInt": "80" },
+              "interesting_entries": [
+                "https://bdaesthetic.com/wp-content/plugins/wordpress-seo/readme.txt"
+              ]
+            },
+            "Readme - ChangeLog Section (Aggressive Detection)": {
+              "confidence": { "$numberInt": "50" },
+              "interesting_entries": [
+                "https://bdaesthetic.com/wp-content/plugins/wordpress-seo/readme.txt"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "users": {
+      "krystian": {
+        "id": { "$numberInt": "4216" },
+        "found_by": "Wp Json Api (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [
+          "https://bdaesthetic.com/wp-json/wp/v2/users/?per_page=100&page=1"
+        ],
+        "confirmed_by": {}
+      },
+      "staszewskaola1": {
+        "id": { "$numberInt": "3364" },
+        "found_by": "Wp Json Api (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [
+          "https://bdaesthetic.com/wp-json/wp/v2/users/?per_page=100&page=1"
+        ],
+        "confirmed_by": {}
+      },
+      "malgorzatap": {
+        "id": { "$numberInt": "3011" },
+        "found_by": "Wp Json Api (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [
+          "https://bdaesthetic.com/wp-json/wp/v2/users/?per_page=100&page=1"
+        ],
+        "confirmed_by": {}
+      },
+      "kamillecki": {
+        "id": { "$numberInt": "1998" },
+        "found_by": "Wp Json Api (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [
+          "https://bdaesthetic.com/wp-json/wp/v2/users/?per_page=100&page=1"
+        ],
+        "confirmed_by": {
+          "Rss Generator (Aggressive Detection)": {
+            "confidence": { "$numberInt": "50" },
+            "interesting_entries": []
+          }
+        }
+      },
+      "monika-bielinska": {
+        "id": { "$numberInt": "20" },
+        "found_by": "Wp Json Api (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [
+          "https://bdaesthetic.com/wp-json/wp/v2/users/?per_page=100&page=1"
+        ],
+        "confirmed_by": {}
+      },
+      "szymon-rogal": {
+        "id": { "$numberInt": "5" },
+        "found_by": "Wp Json Api (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [
+          "https://bdaesthetic.com/wp-json/wp/v2/users/?per_page=100&page=1"
+        ],
+        "confirmed_by": {}
+      },
+      "komnet-komnet": {
+        "id": { "$numberInt": "3" },
+        "found_by": "Wp Json Api (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [
+          "https://bdaesthetic.com/wp-json/wp/v2/users/?per_page=100&page=1"
+        ],
+        "confirmed_by": {}
+      },
+      "media-media": {
+        "id": { "$numberInt": "2" },
+        "found_by": "Wp Json Api (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [
+          "https://bdaesthetic.com/wp-json/wp/v2/users/?per_page=100&page=1"
+        ],
+        "confirmed_by": {}
+      },
+      "docent": {
+        "id": { "$numberInt": "1" },
+        "found_by": "Wp Json Api (Aggressive Detection)",
+        "confidence": { "$numberInt": "100" },
+        "interesting_entries": [
+          "https://bdaesthetic.com/wp-json/wp/v2/users/?per_page=100&page=1"
+        ],
+        "confirmed_by": {
+          "Oembed API - Author URL (Aggressive Detection)": {
+            "confidence": { "$numberInt": "90" },
+            "interesting_entries": [
+              "https://bdaesthetic.com/wp-json/oembed/1.0/embed?url=https://bdaesthetic.com/&format=json"
+            ]
+          }
+        }
+      },
+      "Aleksandra Staszewska": {
+        "id": null,
+        "found_by": "Rss Generator (Aggressive Detection)",
+        "confidence": { "$numberInt": "50" },
+        "interesting_entries": [],
+        "confirmed_by": {}
+      }
+    },
+    "vuln_api": {
+      "plan": "free",
+      "requests_done_during_scan": { "$numberInt": "14" },
+      "requests_remaining": "Unlimited"
+    },
+    "stop_time": { "$numberInt": "1748288792" },
+    "elapsed": { "$numberInt": "78" },
+    "requests_done": { "$numberInt": "117" },
+    "cached_requests": { "$numberInt": "8" },
+    "data_sent": { "$numberInt": "39450" },
+    "data_sent_humanised": "38.525 KB",
+    "data_received": { "$numberInt": "2609104" },
+    "data_received_humanised": "2.488 MB",
+    "used_memory": { "$numberInt": "325726208" },
+    "used_memory_humanised": "310.637 MB"
+  },
+}
