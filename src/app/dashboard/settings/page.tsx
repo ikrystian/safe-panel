@@ -1,13 +1,19 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useUser } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 import { User, Bell, Shield, Palette, Database } from "lucide-react";
 
 export default function SettingsPage() {
-  const { user } = useUser();
+  const { data: session } = useSession();
 
   const settingsCategories = [
     {
@@ -15,30 +21,48 @@ export default function SettingsPage() {
       description: "Manage your personal information and preferences",
       icon: User,
       items: [
-        { label: "Personal Information", description: "Update your name, email, and contact details" },
+        {
+          label: "Personal Information",
+          description: "Update your name, email, and contact details",
+        },
         { label: "Profile Picture", description: "Change your profile photo" },
         { label: "Password", description: "Update your account password" },
-      ]
+      ],
     },
     {
       title: "Notifications",
       description: "Configure how you receive updates and alerts",
       icon: Bell,
       items: [
-        { label: "Email Notifications", description: "Session reminders and updates" },
-        { label: "Push Notifications", description: "Real-time alerts on your device" },
-        { label: "SMS Notifications", description: "Text message alerts for important events" },
-      ]
+        {
+          label: "Email Notifications",
+          description: "Session reminders and updates",
+        },
+        {
+          label: "Push Notifications",
+          description: "Real-time alerts on your device",
+        },
+        {
+          label: "SMS Notifications",
+          description: "Text message alerts for important events",
+        },
+      ],
     },
     {
       title: "Privacy & Security",
       description: "Control your privacy settings and security options",
       icon: Shield,
       items: [
-        { label: "Two-Factor Authentication", description: "Add an extra layer of security" },
+        {
+          label: "Two-Factor Authentication",
+          description: "Add an extra layer of security",
+        },
         { label: "Data Privacy", description: "Manage how your data is used" },
-        { label: "Session Management", description: "View and manage active sessions" },
-      ]
+        {
+          label: "Session Management",
+          description: "View and manage active sessions",
+        },
+      ],
     },
     {
       title: "Appearance",
@@ -48,7 +72,7 @@ export default function SettingsPage() {
         { label: "Theme", description: "Choose between light and dark mode" },
         { label: "Language", description: "Select your preferred language" },
         { label: "Timezone", description: "Set your local timezone" },
-      ]
+      ],
     },
     {
       title: "Data Management",
@@ -56,9 +80,15 @@ export default function SettingsPage() {
       icon: Database,
       items: [
         { label: "Export Data", description: "Download your training data" },
-        { label: "Import Data", description: "Import data from other platforms" },
-        { label: "Data Retention", description: "Configure how long data is stored" },
-      ]
+        {
+          label: "Import Data",
+          description: "Import data from other platforms",
+        },
+        {
+          label: "Data Retention",
+          description: "Configure how long data is stored",
+        },
+      ],
     },
   ];
 
@@ -78,29 +108,25 @@ export default function SettingsPage() {
             <User className="h-5 w-5" />
             Account Information
           </CardTitle>
-          <CardDescription>
-            Your current account details
-          </CardDescription>
+          <CardDescription>Your current account details</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             <div>
               <span className="text-sm font-medium">Name: </span>
               <span className="text-sm text-muted-foreground">
-                {user?.firstName} {user?.lastName}
+                {session?.user?.name || "N/A"}
               </span>
             </div>
             <div>
               <span className="text-sm font-medium">Email: </span>
               <span className="text-sm text-muted-foreground">
-                {user?.primaryEmailAddress?.emailAddress}
+                {session?.user?.email || "N/A"}
               </span>
             </div>
             <div>
               <span className="text-sm font-medium">Member since: </span>
-              <span className="text-sm text-muted-foreground">
-                {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-              </span>
+              <span className="text-sm text-muted-foreground">N/A</span>
             </div>
           </div>
         </CardContent>
@@ -124,7 +150,9 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium">{item.label}</p>
-                        <p className="text-xs text-muted-foreground">{item.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.description}
+                        </p>
                       </div>
                       <Button variant="outline" size="sm">
                         Configure

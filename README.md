@@ -2,7 +2,7 @@
 
 ## Features
 
-- 🔐 **Authentication**: Secure user authentication with Clerk
+- 🔐 **Authentication**: Secure user authentication with NextAuth.js
 - 📊 **Dashboard**: Comprehensive dashboard with training statistics
 - 📈 **Analytics**: Advanced analytics page with charts and statistics based on database data
 - 🔍 **Pages Database**: Advanced web search with SerpAPI integration (50 requests per search)
@@ -16,7 +16,7 @@
 ## Tech Stack
 
 - **Framework**: Next.js 15 with App Router
-- **Authentication**: Clerk
+- **Authentication**: NextAuth.js
 - **Database**: SQLite with better-sqlite3
 - **Search API**: SerpAPI (Google Search Results)
 - **UI Components**: chadcn/ui (shadcn/ui)
@@ -27,13 +27,13 @@
 
 ## Database Structure
 
-Currently, the application uses Clerk for user management and authentication. The planned database structure includes:
+The application uses NextAuth.js for user management and authentication with a local SQLite database. The database structure includes:
 
 ### Users
 
-- Managed by Clerk authentication
-- User profiles with first name, last name, email
-- Role-based access
+- Managed by NextAuth.js authentication
+- User profiles with name, email, and hashed passwords
+- Local SQLite storage for user data
 
 ### Search Results (Implemented)
 
@@ -77,7 +77,6 @@ wordpress_users {
 
 - Node.js 18+
 - npm or yarn
-- Clerk account for authentication
 
 ### Installation
 
@@ -100,11 +99,11 @@ npm install
 cp .env.example .env.local
 ```
 
-Add your Clerk keys, SerpAPI key, and OpenRouter API key to `.env.local`:
+Add your NextAuth secret, SerpAPI key, and OpenRouter API key to `.env.local`:
 
 ```
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-CLERK_SECRET_KEY=your_clerk_secret_key
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here-change-this-in-production
 SERPAPI_KEY=your_serpapi_key
 OPENROUTER_API_KEY=your_openrouter_api_key
 ```
@@ -132,7 +131,7 @@ src/
 │   └── ui/               # chadcn/ui components
 ├── hooks/                # Custom React hooks
 ├── lib/                  # Utility functions
-└── middleware.ts         # Clerk middleware for route protection
+└── middleware.ts         # NextAuth.js middleware for route protection
 ```
 
 ## Available Scripts
@@ -144,10 +143,11 @@ src/
 
 ## Authentication & Security
 
-- Protected routes using Clerk middleware
+- Protected routes using NextAuth.js middleware
 - Dashboard routes require authentication
-- User session management handled by Clerk
-- Secure sign-in/sign-up flows
+- User session management handled by NextAuth.js
+- Secure sign-in/sign-up flows with bcrypt password hashing
+- Local SQLite database for user management
 
 ## UI Components
 
@@ -587,7 +587,7 @@ The AI Test page provides a comprehensive interface for testing various AI model
 
 - **Protected Routes**: AI Test page requires authentication
 - **User Isolation**: Each user's usage is tracked separately
-- **Session Management**: Secure session handling via Clerk
+- **Session Management**: Secure session handling via NextAuth.js
 
 ### 🎨 User Experience
 

@@ -1,10 +1,10 @@
-import Database from 'better-sqlite3';
+import BetterSqlite3 from 'better-sqlite3';
 import path from 'path';
 
 const dbPath = path.join(process.cwd(), 'data', 'database.sqlite');
 
 // Create database instance
-let db: Database.Database;
+let db: BetterSqlite3.Database;
 
 export function getDatabase() {
   if (!db) {
@@ -15,7 +15,7 @@ export function getDatabase() {
       fs.mkdirSync(dataDir, { recursive: true });
     }
 
-    db = new Database(dbPath);
+    db = new BetterSqlite3(dbPath);
 
     // Enable WAL mode for better performance
     db.pragma('journal_mode = WAL');
@@ -29,6 +29,18 @@ export function getDatabase() {
 
 function initializeTables() {
   const db = getDatabase();
+
+  // Create users table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      name TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
   // Create history_scrapped table
   db.exec(`
@@ -76,11 +88,21 @@ function initializeTables() {
 
   // Create index for better performance
   db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_search_query ON history_scrapped(search_query);
     CREATE INDEX IF NOT EXISTS idx_search_date ON history_scrapped(search_date);
     CREATE INDEX IF NOT EXISTS idx_user_id ON history_scrapped(user_id);
     CREATE INDEX IF NOT EXISTS idx_pagination_query_user ON search_pagination(search_query, user_id);
   `);
+}
+
+export interface User {
+  id?: number;
+  email: string;
+  password: string;
+  name?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface SearchResult {
@@ -105,7 +127,7 @@ export interface SearchPagination {
 }
 
 export class SearchResultsRepository {
-  private db: Database.Database;
+  private db: BetterSqlite3.Database;
 
   constructor() {
     this.db = getDatabase();
@@ -350,6 +372,85 @@ export class SearchResultsRepository {
       LIMIT 1
     `);
     return stmt.get() as SearchResult | null;
+  }
+}
+
+// User management class
+export class UserDatabase {
+  private db: BetterSqlite3.Database;
+
+  constructor() {
+    this.db = getDatabase();
+  }
+
+  // Create a new user
+  createUser(email: string, password: string, name?: string): User {
+    const stmt = this.db.prepare(`
+      INSERT INTO users (email, password, name)
+      VALUES (?, ?, ?)
+    `);
+
+    const info = stmt.run(email, password, name || null);
+
+    return {
+      id: info.lastInsertRowid as number,
+      email,
+      password,
+      name,
+    };
+  }
+
+  // Get user by email
+  getUserByEmail(email: string): User | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM users WHERE email = ?
+    `);
+    return stmt.get(email) as User | null;
+  }
+
+  // Get user by ID
+  getUserById(id: number): User | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM users WHERE id = ?
+    `);
+    return stmt.get(id) as User | null;
+  }
+
+  // Update user
+  updateUser(id: number, updates: Partial<User>): void {
+    const fields = [];
+    const values = [];
+
+    if (updates.email) {
+      fields.push('email = ?');
+      values.push(updates.email);
+    }
+    if (updates.password) {
+      fields.push('password = ?');
+      values.push(updates.password);
+    }
+    if (updates.name !== undefined) {
+      fields.push('name = ?');
+      values.push(updates.name);
+    }
+
+    if (fields.length === 0) return;
+
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    const stmt = this.db.prepare(`
+      UPDATE users SET ${fields.join(', ')} WHERE id = ?
+    `);
+    stmt.run(...values);
+  }
+
+  // Delete user
+  deleteUser(id: number): void {
+    const stmt = this.db.prepare(`
+      DELETE FROM users WHERE id = ?
+    `);
+    stmt.run(id);
   }
 }
 

@@ -1,4 +1,4 @@
-import { SignIn } from "@clerk/nextjs";
+import { SignInForm } from "@/components/auth/sign-in-form";
 
 export default function Page() {
   return (
@@ -9,19 +9,10 @@ export default function Page() {
             Sign in to Safe
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Manage internal databse
+            Manage internal database
           </p>
         </div>
-        <div className="flex justify-center">
-          <SignIn
-            appearance={{
-              elements: {
-                rootBox: "mx-auto",
-                card: "shadow-lg border-0",
-              },
-            }}
-          />
-        </div>
+        <SignInForm />
       </div>
     </div>
   );

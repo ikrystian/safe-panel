@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UserButton } from "@clerk/nextjs";
+import { UserMenu } from "@/components/auth/user-menu";
 import { Home, Settings, Bell, Database, Bot } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -85,13 +85,7 @@ export default function DashboardLayout({
               <Bell className="h-4 w-4" />
             </Button>
             <ThemeSwitcher />
-            <UserButton
-              appearance={{
-                elements: {
-                  avatarBox: "h-8 w-8",
-                },
-              }}
-            />
+            <UserMenu />
           </div>
         </div>
       </header>

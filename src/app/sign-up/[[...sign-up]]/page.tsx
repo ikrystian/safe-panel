@@ -1,4 +1,4 @@
-import { SignUp } from "@clerk/nextjs";
+import { SignUpForm } from "@/components/auth/sign-up-form";
 
 export default function Page() {
   return (
@@ -9,19 +9,10 @@ export default function Page() {
             Join Safe
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Start tracking your sports training today
+            Start managing your database today
           </p>
         </div>
-        <div className="flex justify-center">
-          <SignUp
-            appearance={{
-              elements: {
-                rootBox: "mx-auto",
-                card: "shadow-lg border-0",
-              },
-            }}
-          />
-        </div>
+        <SignUpForm />
       </div>
     </div>
   );

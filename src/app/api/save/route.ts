@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 import { SearchResultsRepository } from '@/lib/database';
 
 const searchResultsRepo = new SearchResultsRepository();
@@ -24,14 +25,14 @@ export async function POST(request: NextRequest) {
       // We'll extract it after parsing the JSON
       console.log('Request authorized via API Key for callback.');
     } else {
-      // Standard Clerk authentication for other requests
-      const authResult = await auth();
-      userIdFromAuth = authResult.userId;
+      // Standard NextAuth authentication for other requests
+      const session = await getServerSession(authOptions);
+      userIdFromAuth = (session as any)?.user?.id || null;
       if (!userIdFromAuth) {
-        console.log('Unauthorized: No userId from Clerk auth and no valid API key.');
+        console.log('Unauthorized: No userId from NextAuth session and no valid API key.');
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      console.log(`Request authorized via Clerk auth for user: ${userIdFromAuth}`);
+      console.log(`Request authorized via NextAuth for user: ${userIdFromAuth}`);
     }
 
     const data = await request.json();

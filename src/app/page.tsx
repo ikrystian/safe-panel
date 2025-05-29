@@ -1,21 +1,21 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 
 export default function Home() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
+    if (status === "authenticated") {
       router.push("/dashboard");
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [status, router]);
 
-  if (!isLoaded) {
+  if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -23,7 +23,7 @@ export default function Home() {
     );
   }
 
-  if (isSignedIn) {
+  if (session) {
     return null; // Will redirect to dashboard
   }
   return (
