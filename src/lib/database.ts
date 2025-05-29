@@ -84,6 +84,20 @@ function initializeTables() {
     // Column already exists, ignore error
   }
 
+  // Add contact_url column if it doesn't exist (for existing databases)
+  try {
+    db.exec(`ALTER TABLE history_scrapped ADD COLUMN contact_url TEXT`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add is_wordpress column if it doesn't exist (for existing databases)
+  try {
+    db.exec(`ALTER TABLE history_scrapped ADD COLUMN is_wordpress BOOLEAN DEFAULT 0`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
 
 
   // Create index for better performance
@@ -114,6 +128,8 @@ export interface SearchResult {
   user_id?: string;
   processed?: number;
   category?: number;
+  contact_url?: string;
+  is_wordpress?: boolean;
   created_at?: string;
 }
 
@@ -372,6 +388,55 @@ export class SearchResultsRepository {
       LIMIT 1
     `);
     return stmt.get() as SearchResult | null;
+  }
+
+  // Update multiple records with contact_url, category, and is_wordpress
+  updateRecordsWithMetadata(updates: Array<{
+    id: number;
+    contact_url?: string;
+    category?: string;
+    is_wordpress?: boolean;
+  }>): { updated: number; errors: Array<{ id: number; error: string }> } {
+    const stmt = this.db.prepare(`
+      UPDATE history_scrapped
+      SET contact_url = ?, category = ?, is_wordpress = ?
+      WHERE id = ?
+    `);
+
+    const updateMany = this.db.transaction((updates: Array<{
+      id: number;
+      contact_url?: string;
+      category?: string;
+      is_wordpress?: boolean;
+    }>) => {
+      const results = { updated: 0, errors: [] as Array<{ id: number; error: string }> };
+
+      for (const update of updates) {
+        try {
+          const result = stmt.run(
+            update.contact_url || null,
+            update.category || null,
+            update.is_wordpress ? 1 : 0,
+            update.id
+          );
+
+          if (result.changes > 0) {
+            results.updated++;
+          } else {
+            results.errors.push({ id: update.id, error: 'Record not found' });
+          }
+        } catch (error) {
+          results.errors.push({
+            id: update.id,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      }
+
+      return results;
+    });
+
+    return updateMany(updates);
   }
 }
 

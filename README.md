@@ -48,6 +48,8 @@ history_scrapped {
   user_id: text
   processed: integer (default 0) -- 0=unprocessed, 1=processing, 2=completed, 3=error
   category: integer (default 0)
+  contact_url: text -- URL to contact page
+  is_wordpress: boolean (default 0) -- Whether site uses WordPress
   created_at: datetime (default current_timestamp)
 }
 
@@ -479,6 +481,115 @@ curl -X POST http://localhost:3001/api/public/unprocessed \
 curl -X POST http://localhost:3001/api/public/unprocessed \
   -H "Content-Type: application/json" \
   -d '{"id": 1007}' | jq
+```
+
+### 📝 Update Records Metadata
+
+**Endpoint**: `POST /api/update-metadata`
+
+Updates multiple records with contact URL, category, and WordPress detection information. This endpoint does not require authentication.
+
+#### Request Format
+
+```json
+[
+  {
+    "id": 1,
+    "contact_url": "https://dev.gal-bud.pl/kontakt",
+    "category": "Budownictwo",
+    "is_wordpress": false
+  },
+  {
+    "id": 2,
+    "contact_url": "https://example.com/contact",
+    "category": "Technology",
+    "is_wordpress": true
+  }
+]
+```
+
+#### Response Format
+
+**Success (200)**:
+
+```json
+{
+  "success": true,
+  "message": "Successfully updated 2 records",
+  "updated": 2,
+  "total_requested": 2
+}
+```
+
+**Partial Success (200)** - Some records updated, some failed:
+
+```json
+{
+  "success": true,
+  "message": "Successfully updated 1 records",
+  "updated": 1,
+  "total_requested": 2,
+  "errors": [
+    {
+      "id": 999,
+      "error": "Record not found"
+    }
+  ]
+}
+```
+
+**Validation Error (400)**:
+
+```json
+{
+  "success": false,
+  "error": "Validation failed",
+  "details": [
+    "Item at index 0: id must be a number",
+    "Item at index 1: contact_url must be a string"
+  ]
+}
+```
+
+#### Field Descriptions
+
+- **id** (number, required): The ID of the record in history_scrapped table
+- **contact_url** (string, required): URL to the contact page
+- **category** (string, required): Business category (e.g., "Budownictwo", "Technology")
+- **is_wordpress** (boolean, required): Whether the site is built with WordPress
+
+#### Use Cases
+
+- **Metadata Enhancement**: Add contact information and categorization to scraped results
+- **WordPress Detection**: Mark sites that use WordPress CMS
+- **Bulk Updates**: Update multiple records in a single request
+- **External Processing**: Allow external systems to enrich data without authentication
+
+#### Example Usage
+
+```bash
+# Update multiple records with metadata
+curl -X POST http://localhost:3001/api/update-metadata \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "id": 1,
+      "contact_url": "https://dev.gal-bud.pl/kontakt",
+      "category": "Budownictwo",
+      "is_wordpress": false
+    },
+    {
+      "id": 2,
+      "contact_url": "https://example.com/contact",
+      "category": "Technology",
+      "is_wordpress": true
+    }
+  ]'
+
+# With jq for formatted output
+curl -X POST http://localhost:3001/api/update-metadata \
+  -H "Content-Type: application/json" \
+  -d '[{"id": 1, "contact_url": "https://dev.gal-bud.pl/kontakt", "category": "Budownictwo", "is_wordpress": false}]' | jq
 ```
 
 ## AI Test with AI Agent for Web Page Analysis (Implemented)
