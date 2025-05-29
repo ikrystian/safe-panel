@@ -61,16 +61,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Access the database connection
-    const db = searchResultsRepo['db']; // Access private db property
-
-    // Find the result by URL and user_id
-    const result = db.prepare(`
-      SELECT id FROM history_scrapped
-      WHERE user_id = ? AND link = ?
-      ORDER BY created_at DESC
-      LIMIT 1
-    `).get(currentUserId, data.url) as { id: number } | undefined;
+    // Find the result by URL and user_id using MongoDB
+    const results = await searchResultsRepo.getSearchResultsByQuery('', currentUserId);
+    const result = results.find(r => r.link === data.url);
 
     if (!result) {
       console.log(`No result found for URL: ${data.url} and user_id: ${currentUserId}`);
@@ -108,28 +101,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the search result in the database
-    const updateResult = db.prepare(`
-      UPDATE history_scrapped
-      SET processed = ?
-      WHERE id = ?
-    `).run(processed, result.id);
+    try {
+      await searchResultsRepo.updateProcessedStatus(result._id!, processed);
+      console.log(`Successfully updated result ${result._id} with status ${processed}`);
 
-    if (updateResult.changes === 0) {
-      console.error(`Failed to update search result for ID: ${result.id}`);
+      return NextResponse.json({
+        message: 'Scan result processed successfully',
+        resultId: result._id,
+        status: processed === 2 ? 'completed' : 'error',
+        timestamp: new Date().toISOString()
+      });
+    } catch (updateError) {
+      console.error(`Failed to update search result for ID: ${result._id}`, updateError);
       return NextResponse.json(
         { error: 'Failed to update search result in database' },
         { status: 500 }
       );
     }
-
-    console.log(`Successfully updated result ${result.id} with status ${processed}`);
-
-    return NextResponse.json({
-      message: 'Scan result processed successfully',
-      resultId: result.id,
-      status: processed === 2 ? 'completed' : 'error',
-      timestamp: new Date().toISOString()
-    });
 
   } catch (error: any) {
     console.error('Error processing scan result in /api/save:', error);

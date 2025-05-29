@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { searchResultsRepo, SearchResult } from '@/lib/database';
+import { searchResultsRepo, ISearchResult } from '@/lib/database';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { GoogleSearch } = require('google-search-results-nodejs');
@@ -47,15 +47,15 @@ export async function POST(request: NextRequest) {
 
     // Get or reset pagination state
     if (resetPagination) {
-      searchResultsRepo.resetPaginationState(query, userId);
+      await searchResultsRepo.resetPaginationState(query, userId);
     }
 
-    const paginationState = searchResultsRepo.getPaginationState(query, userId);
+    const paginationState = await searchResultsRepo.getPaginationState(query, userId);
     const startFromPosition = paginationState ? paginationState.last_start_position + 10 : 0;
     const totalRequestsMade = paginationState ? paginationState.total_requests_made : 0;
 
     const search = new GoogleSearch(serpApiKey);
-    const allResults: SearchResult[] = [];
+    const allResults: ISearchResult[] = [];
     const maxRequests = 1; // 1 for testing
     const resultsPerPage = 10; // Google typically returns 10 results per page
 
@@ -98,11 +98,11 @@ export async function POST(request: NextRequest) {
             const domain = extractDomain(originalLink);
 
             // Check if domain already exists for this user
-            const domainExists = searchResultsRepo.domainExists(domain, userId);
+            const domainExists = await searchResultsRepo.domainExists(domain, userId);
 
             // Only add if domain doesn't exist (skip duplicates)
             if (!domainExists) {
-              const searchResult: SearchResult = {
+              const searchResult: ISearchResult = {
                 search_query: query,
                 title: result.title || '',
                 link: domain, // Store only the domain
@@ -136,22 +136,22 @@ export async function POST(request: NextRequest) {
 
     console.log(`Search completed. Total results found: ${allResults.length}`);
 
-    let newlyAddedResults: SearchResult[] = [];
+    let newlyAddedResults: ISearchResult[] = [];
     // Save all results to database
     if (allResults.length > 0) {
-      searchResultsRepo.insertSearchResults(allResults);
+      await searchResultsRepo.insertSearchResults(allResults);
       // After inserting, fetch the newly added results from the database
       // This assumes getSearchResultsByQuery returns results ordered by creation,
       // so the most recent ones (which are the newly added ones) will be at the top.
       // A more robust solution might involve returning IDs from insertSearchResults
       // or adding a unique identifier to the batch. For now, we'll fetch all for the query.
-      newlyAddedResults = searchResultsRepo.getSearchResultsByQuery(query, userId);
+      newlyAddedResults = await searchResultsRepo.getSearchResultsByQuery(query, userId);
     }
 
     // Update pagination state - save the last position we reached
     const lastPosition = startFromPosition + (maxRequests * resultsPerPage);
     const newTotalRequests = totalRequestsMade + maxRequests;
-    searchResultsRepo.updatePaginationState(query, userId, lastPosition, newTotalRequests);
+    await searchResultsRepo.updatePaginationState(query, userId, lastPosition, newTotalRequests);
 
     return NextResponse.json({
       success: true,
@@ -184,24 +184,29 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query');
     const getPagination = searchParams.get('pagination');
+    const getAll = searchParams.get('all');
 
     if (query) {
       // Get results for specific query
-      const results = searchResultsRepo.getSearchResultsByQuery(query, userId);
-      const paginationState = searchResultsRepo.getPaginationState(query, userId);
+      const results = await searchResultsRepo.getSearchResultsByQuery(query, userId);
+      const paginationState = await searchResultsRepo.getPaginationState(query, userId);
       return NextResponse.json({
         results,
         query,
         pagination: paginationState
       });
+    } else if (getAll === 'true') {
+      // Get all search results for user (for Pages Database)
+      const results = await searchResultsRepo.getAllSearchResults(userId);
+      return NextResponse.json({ results });
     } else if (getPagination === 'true') {
       // Get all pagination states
-      const paginationStates = searchResultsRepo.getAllPaginationStates(userId);
+      const paginationStates = await searchResultsRepo.getAllPaginationStates(userId);
       return NextResponse.json({ paginationStates });
     } else {
       // Get search history
-      const history = searchResultsRepo.getSearchHistory(userId);
-      const totalCount = searchResultsRepo.getTotalCount(userId);
+      const history = await searchResultsRepo.getSearchHistory(userId);
+      const totalCount = await searchResultsRepo.getTotalCount(userId);
       return NextResponse.json({ history, totalCount });
     }
 
@@ -229,8 +234,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
-    searchResultsRepo.deleteSearchResults(query, userId);
-    searchResultsRepo.resetPaginationState(query, userId);
+    await searchResultsRepo.deleteSearchResults(query, userId);
+    await searchResultsRepo.resetPaginationState(query, userId);
 
     return NextResponse.json({ success: true, message: 'Search results and pagination state deleted' });
 
@@ -256,13 +261,12 @@ export async function PATCH(request: NextRequest) {
 
     if (id !== undefined && processed !== undefined) {
       // Update specific result by ID
-      searchResultsRepo.updateProcessedStatus(id, processed);
-
+      await searchResultsRepo.updateProcessedStatus(id, processed);
 
       return NextResponse.json({ success: true, message: 'Website processed successfully' });
     } else if (query && processed !== undefined) {
       // Update all results for a query
-      searchResultsRepo.updateProcessedStatusByQuery(query, processed, userId);
+      await searchResultsRepo.updateProcessedStatusByQuery(query, processed, userId);
       return NextResponse.json({ success: true, message: 'Processed status updated for all results' });
     } else {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });

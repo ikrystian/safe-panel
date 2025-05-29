@@ -4,7 +4,7 @@ import { searchResultsRepo } from '@/lib/database';
 export async function GET() {
   try {
     // Get one unprocessed or error result with link (no authentication required)
-    const result = searchResultsRepo.getOneUnprocessedResult();
+    const result = await searchResultsRepo.getOneUnprocessedResult();
 
     if (!result) {
       return NextResponse.json({
@@ -16,14 +16,14 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       result: {
-        id: result.id,
+        id: result._id,
         search_query: result.search_query,
         title: result.title,
         link: result.link,
         search_date: result.search_date,
         processed: result.processed,
         category: result.category,
-        created_at: result.created_at
+        created_at: result.createdAt
       }
     });
 
@@ -44,15 +44,15 @@ export async function POST(request: NextRequest) {
   try {
     const { id } = await request.json();
 
-    if (!id || typeof id !== 'number') {
+    if (!id || typeof id !== 'string') {
       return NextResponse.json({
         success: false,
-        error: 'ID is required and must be a number'
+        error: 'ID is required and must be a string'
       }, { status: 400 });
     }
 
     // First check if the record exists and get its current data
-    const existingRecord = searchResultsRepo.getSearchResultById(id);
+    const existingRecord = await searchResultsRepo.getSearchResultById(id);
 
     if (!existingRecord) {
       return NextResponse.json({
@@ -62,13 +62,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the processed status to 2 (completed)
-    searchResultsRepo.updateProcessedStatus(id, 2);
+    await searchResultsRepo.updateProcessedStatus(id, 2);
 
     return NextResponse.json({
       success: true,
       message: 'Record processed status updated to completed',
       record: {
-        id: existingRecord.id,
+        id: existingRecord._id,
         link: existingRecord.link,
         title: existingRecord.title,
         previous_processed: existingRecord.processed,

@@ -1,6 +1,6 @@
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
-import { UserDatabase } from "./database"
+import { userDb } from "./database"
 
 export const authOptions = {
   providers: [
@@ -16,8 +16,7 @@ export const authOptions = {
         }
 
         try {
-          const db = new UserDatabase()
-          const user = db.getUserByEmail(credentials.email)
+          const user = await userDb.getUserByEmail(credentials.email)
 
           if (!user) {
             return null
@@ -30,7 +29,7 @@ export const authOptions = {
           }
 
           return {
-            id: user.id?.toString() || "",
+            id: user._id || "",
             email: user.email,
             name: user.name,
           }

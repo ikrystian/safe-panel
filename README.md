@@ -17,7 +17,7 @@
 
 - **Framework**: Next.js 15 with App Router
 - **Authentication**: NextAuth.js
-- **Database**: SQLite with better-sqlite3
+- **Database**: MongoDB with Mongoose
 - **Search API**: SerpAPI (Google Search Results)
 - **UI Components**: chadcn/ui (shadcn/ui)
 - **Charts**: Recharts for data visualization
@@ -27,40 +27,56 @@
 
 ## Database Structure
 
-The application uses NextAuth.js for user management and authentication with a local SQLite database. The database structure includes:
+The application uses NextAuth.js for user management and authentication with MongoDB. The database structure includes:
 
 ### Users
 
 - Managed by NextAuth.js authentication
 - User profiles with name, email, and hashed passwords
-- Local SQLite storage for user data
+- MongoDB storage for user data
 
 ### Search Results (Implemented)
 
-```sql
--- Current structure
-history_scrapped {
-  id: integer (primary key, autoincrement)
-  search_query: text (not null)
-  title: text
-  link: text
-  search_date: datetime (default current_timestamp)
-  user_id: text
-  processed: integer (default 0) -- 0=unprocessed, 1=processing, 2=completed, 3=error
-  category: integer (default 0)
-  contact_url: text -- URL to contact page
-  is_wordpress: boolean (default 0) -- Whether site uses WordPress
-  created_at: datetime (default current_timestamp)
+```javascript
+// MongoDB Collections using Mongoose schemas
+
+// Users Collection
+{
+  _id: ObjectId,
+  email: String (required, unique, lowercase, trim),
+  password: String (required),
+  name: String (trim),
+  createdAt: Date (auto),
+  updatedAt: Date (auto)
 }
 
-search_pagination {
-  id: integer (primary key, autoincrement)
-  search_query: text (not null)
-  user_id: text (not null)
-  last_start_position: integer (default 0)
-  total_requests_made: integer (default 0)
-  last_updated: datetime (default current_timestamp)
-  UNIQUE(search_query, user_id)
+// SearchResults Collection (history_scrapped equivalent)
+{
+  _id: ObjectId,
+  search_query: String (required, indexed),
+  title: String,
+  link: String,
+  search_date: Date (default: now, indexed),
+  user_id: ObjectId (ref: User, required, indexed),
+  processed: Number (default: 0), // 0=unprocessed, 1=processing, 2=completed, 3=error
+  category: Number (default: 0),
+  contact_url: String, // URL to contact page
+  is_wordpress: Boolean (default: false), // Whether site uses WordPress
+  createdAt: Date (auto),
+  updatedAt: Date (auto)
+}
+
+// SearchPagination Collection
+{
+  _id: ObjectId,
+  search_query: String (required),
+  user_id: ObjectId (ref: User, required),
+  last_start_position: Number (default: 0),
+  total_requests_made: Number (default: 0),
+  last_updated: Date (default: now),
+  createdAt: Date (auto),
+  updatedAt: Date (auto)
+  // Compound unique index on (search_query, user_id)
 }
 
 wordpress_users {

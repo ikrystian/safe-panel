@@ -1,523 +1,631 @@
-import BetterSqlite3 from 'better-sqlite3';
-import path from 'path';
+import mongoose from 'mongoose';
 
-const dbPath = path.join(process.cwd(), 'data', 'database.sqlite');
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/safe_panel_db';
+const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || 'safe_panel_db';
 
-// Create database instance
-let db: BetterSqlite3.Database;
+// MongoDB connection
+let isConnected = false;
 
-export function getDatabase() {
-  if (!db) {
-    // Ensure data directory exists
-    const fs = require('fs');
-    const dataDir = path.dirname(dbPath);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-
-    db = new BetterSqlite3(dbPath);
-
-    // Enable WAL mode for better performance
-    db.pragma('journal_mode = WAL');
-
-    // Initialize tables
-    initializeTables();
+export async function connectToDatabase() {
+  if (isConnected) {
+    return;
   }
 
-  return db;
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      dbName: MONGODB_DB_NAME,
+    });
+    isConnected = true;
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    throw error;
+  }
 }
 
-function initializeTables() {
-  const db = getDatabase();
+// User Schema
+const userSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  name: {
+    type: String,
+    trim: true,
+  },
+}, {
+  timestamps: true,
+});
 
-  // Create users table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      name TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+// Search Result Schema
+const searchResultSchema = new mongoose.Schema({
+  search_query: {
+    type: String,
+    required: true,
+    index: true,
+  },
+  title: {
+    type: String,
+  },
+  link: {
+    type: String,
+  },
+  search_date: {
+    type: Date,
+    default: Date.now,
+    index: true,
+  },
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  },
+  processed: {
+    type: Number,
+    default: 0,
+  },
+  category: {
+    type: Number,
+    default: 0,
+  },
+  contact_url: {
+    type: String,
+  },
+  is_wordpress: {
+    type: Boolean,
+    default: false,
+  },
+}, {
+  timestamps: true,
+});
 
-  // Create history_scrapped table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS history_scrapped (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      search_query TEXT NOT NULL,
-      title TEXT,
-      link TEXT,
-      search_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-      user_id TEXT,
-      processed INTEGER DEFAULT 0,
-      category INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+// Search Pagination Schema
+const searchPaginationSchema = new mongoose.Schema({
+  search_query: {
+    type: String,
+    required: true,
+  },
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  last_start_position: {
+    type: Number,
+    default: 0,
+  },
+  total_requests_made: {
+    type: Number,
+    default: 0,
+  },
+  last_updated: {
+    type: Date,
+    default: Date.now,
+  },
+}, {
+  timestamps: true,
+});
 
-  // Create search_pagination table to track pagination state
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS search_pagination (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      search_query TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      last_start_position INTEGER DEFAULT 0,
-      total_requests_made INTEGER DEFAULT 0,
-      last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(search_query, user_id)
-    )
-  `);
+// Create compound index for search_query and user_id
+searchPaginationSchema.index({ search_query: 1, user_id: 1 }, { unique: true });
+searchResultSchema.index({ search_query: 1, user_id: 1 });
 
-  // Add processed column if it doesn't exist (for existing databases)
-  try {
-    db.exec(`ALTER TABLE history_scrapped ADD COLUMN processed INTEGER DEFAULT 0`);
-  } catch (error) {
-    // Column already exists, ignore error
-  }
+// Models
+export const User = mongoose.models.User || mongoose.model('User', userSchema);
+export const SearchResult = mongoose.models.SearchResult || mongoose.model('SearchResult', searchResultSchema);
+export const SearchPagination = mongoose.models.SearchPagination || mongoose.model('SearchPagination', searchPaginationSchema);
 
-  // Add category column if it doesn't exist (for existing databases)
-  try {
-    db.exec(`ALTER TABLE history_scrapped ADD COLUMN category INTEGER DEFAULT 0`);
-  } catch (error) {
-    // Column already exists, ignore error
-  }
-
-  // Add contact_url column if it doesn't exist (for existing databases)
-  try {
-    db.exec(`ALTER TABLE history_scrapped ADD COLUMN contact_url TEXT`);
-  } catch (error) {
-    // Column already exists, ignore error
-  }
-
-  // Add is_wordpress column if it doesn't exist (for existing databases)
-  try {
-    db.exec(`ALTER TABLE history_scrapped ADD COLUMN is_wordpress BOOLEAN DEFAULT 0`);
-  } catch (error) {
-    // Column already exists, ignore error
-  }
-
-
-
-  // Create index for better performance
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-    CREATE INDEX IF NOT EXISTS idx_search_query ON history_scrapped(search_query);
-    CREATE INDEX IF NOT EXISTS idx_search_date ON history_scrapped(search_date);
-    CREATE INDEX IF NOT EXISTS idx_user_id ON history_scrapped(user_id);
-    CREATE INDEX IF NOT EXISTS idx_pagination_query_user ON search_pagination(search_query, user_id);
-  `);
-}
-
-export interface User {
-  id?: number;
+// TypeScript interfaces
+export interface IUser {
+  _id?: string;
   email: string;
   password: string;
   name?: string;
-  created_at?: string;
-  updated_at?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export interface SearchResult {
-  id?: number;
+export interface ISearchResult {
+  _id?: string;
+  id?: string; // For backward compatibility
   search_query: string;
   title?: string;
   link?: string;
-  search_date?: string;
-  user_id?: string;
+  search_date?: Date;
+  user_id: string;
   processed?: number;
   category?: number;
   contact_url?: string;
   is_wordpress?: boolean;
-  created_at?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  created_at?: Date; // For backward compatibility
 }
 
-export interface SearchPagination {
-  id?: number;
+export interface ISearchPagination {
+  _id?: string;
+  id?: string; // For backward compatibility
   search_query: string;
   user_id: string;
   last_start_position: number;
   total_requests_made: number;
-  last_updated?: string;
+  last_updated?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export class SearchResultsRepository {
-  private db: BetterSqlite3.Database;
-
   constructor() {
-    this.db = getDatabase();
+    // Ensure database connection
+    connectToDatabase().catch(console.error);
   }
 
   // Insert search results
-  insertSearchResults(results: SearchResult[]): void {
-    const stmt = this.db.prepare(`
-      INSERT INTO history_scrapped (
-        search_query, title, link, user_id, processed, category
-      ) VALUES (?, ?, ?, ?, ?, ?)
-    `);
+  async insertSearchResults(results: ISearchResult[]): Promise<void> {
+    await connectToDatabase();
 
-    const insertMany = this.db.transaction((results: SearchResult[]) => {
-      for (const result of results) {
-        stmt.run(
-          result.search_query,
-          result.title,
-          result.link,
-          result.user_id,
-          result.processed || 0,
-          result.category || 0
-        );
-      }
-    });
+    const searchResults = results.map(result => ({
+      search_query: result.search_query,
+      title: result.title,
+      link: result.link,
+      user_id: result.user_id,
+      processed: result.processed || 0,
+      category: result.category || 0,
+      search_date: result.search_date || new Date(),
+    }));
 
-    insertMany(results);
+    await SearchResult.insertMany(searchResults);
   }
 
   // Get search results by query
-  getSearchResultsByQuery(query: string, userId?: string): SearchResult[] {
-    let sql = `
-      SELECT * FROM history_scrapped
-      WHERE search_query = ?
-    `;
-    const params: any[] = [query];
+  async getSearchResultsByQuery(query: string, userId?: string): Promise<ISearchResult[]> {
+    await connectToDatabase();
 
+    const filter: any = { search_query: query };
     if (userId) {
-      sql += ` AND user_id = ?`;
-      params.push(userId);
+      filter.user_id = userId;
     }
 
-    sql += ` ORDER BY created_at DESC`;
+    const results = await SearchResult.find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const stmt = this.db.prepare(sql);
-    const results = stmt.all(...params) as SearchResult[];
+    return results.map(result => ({
+      _id: result._id?.toString(),
+      id: result._id?.toString(), // For backward compatibility
+      search_query: result.search_query,
+      title: result.title,
+      link: result.link,
+      search_date: result.search_date,
+      user_id: result.user_id?.toString(),
+      processed: result.processed,
+      category: result.category,
+      contact_url: result.contact_url,
+      is_wordpress: result.is_wordpress,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      created_at: result.createdAt, // For backward compatibility
+    }));
+  }
 
-    return results;
-    // return results.map(result => {
-    //   if (typeof result.meta_generator === 'string') {
-    //     try {
-    //       result.meta_generator = JSON.parse(result.meta_generator);
-    //     } catch (e) {
-    //       result.meta_generator = null;
-    //     }
-    //   } else if (result.meta_generator === null) {
-    //     result.meta_generator = null;
-    //   } else if (!Array.isArray(result.meta_generator)) {
-    //     result.meta_generator = null;
-    //   }
-  //   return result;
-  // });
+  // Get all search results for a user (for Pages Database)
+  async getAllSearchResults(userId?: string): Promise<ISearchResult[]> {
+    await connectToDatabase();
+
+    const filter: any = {};
+    if (userId) {
+      filter.user_id = userId;
+    }
+
+    const results = await SearchResult.find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return results.map(result => ({
+      _id: result._id?.toString(),
+      id: result._id?.toString(), // For backward compatibility
+      search_query: result.search_query,
+      title: result.title,
+      link: result.link,
+      search_date: result.search_date,
+      user_id: result.user_id?.toString(),
+      processed: result.processed,
+      category: result.category,
+      contact_url: result.contact_url,
+      is_wordpress: result.is_wordpress,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      created_at: result.createdAt, // For backward compatibility
+    }));
   }
 
   // Get search result by ID
-  getSearchResultById(id: number, userId?: string): SearchResult | null {
-    let sql = `
-      SELECT id, search_query, title, link, search_date, user_id, processed, category, created_at
-      FROM history_scrapped
-      WHERE id = ?
-    `;
-    const params: any[] = [id];
+  async getSearchResultById(id: string, userId?: string): Promise<ISearchResult | null> {
+    await connectToDatabase();
 
+    const filter: any = { _id: id };
     if (userId) {
-      sql += ` AND user_id = ?`;
-      params.push(userId);
+      filter.user_id = userId;
     }
 
-    const stmt = this.db.prepare(sql);
-    const result = stmt.get(...params) as SearchResult | null;
+    const result = await SearchResult.findOne(filter).lean() as any;
 
-    return result;
+    if (!result) return null;
+
+    return {
+      _id: result._id?.toString(),
+      id: result._id?.toString(), // For backward compatibility
+      search_query: result.search_query,
+      title: result.title,
+      link: result.link,
+      search_date: result.search_date,
+      user_id: result.user_id?.toString(),
+      processed: result.processed,
+      category: result.category,
+      contact_url: result.contact_url,
+      is_wordpress: result.is_wordpress,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      created_at: result.createdAt, // For backward compatibility
+    };
   }
 
-
-
   // Get all search queries for a user
-  getSearchHistory(userId?: string): { search_query: string; count: number; last_search: string }[] {
-    let sql = `
-      SELECT
-        search_query,
-        COUNT(*) as count,
-        MAX(created_at) as last_search
-      FROM history_scrapped
-    `;
-    const params: any[] = [];
+  async getSearchHistory(userId?: string): Promise<{ search_query: string; count: number; last_search: string }[]> {
+    await connectToDatabase();
+
+    const pipeline: any[] = [];
 
     if (userId) {
-      sql += ` WHERE user_id = ?`;
-      params.push(userId);
+      pipeline.push({ $match: { user_id: userId } });
     }
 
-    sql += ` GROUP BY search_query ORDER BY last_search DESC`;
+    pipeline.push(
+      {
+        $group: {
+          _id: '$search_query',
+          count: { $sum: 1 },
+          last_search: { $max: '$createdAt' }
+        }
+      },
+      {
+        $project: {
+          search_query: '$_id',
+          count: 1,
+          last_search: 1,
+          _id: 0
+        }
+      },
+      { $sort: { last_search: -1 } }
+    );
 
-    const stmt = this.db.prepare(sql);
-    return stmt.all(...params) as { search_query: string; count: number; last_search: string }[];
+    const results = await SearchResult.aggregate(pipeline);
+    return results.map(result => ({
+      search_query: result.search_query,
+      count: result.count,
+      last_search: result.last_search.toISOString(),
+    }));
   }
 
   // Delete search results by query
-  deleteSearchResults(query: string, userId?: string): void {
-    let sql = `DELETE FROM history_scrapped WHERE search_query = ?`;
-    const params: any[] = [query];
+  async deleteSearchResults(query: string, userId?: string): Promise<void> {
+    await connectToDatabase();
 
+    const filter: any = { search_query: query };
     if (userId) {
-      sql += ` AND user_id = ?`;
-      params.push(userId);
+      filter.user_id = userId;
     }
 
-    const stmt = this.db.prepare(sql);
-    stmt.run(...params);
+    await SearchResult.deleteMany(filter);
   }
 
   // Get total count of results
-  getTotalCount(userId?: string): number {
-    let sql = `SELECT COUNT(*) as count FROM history_scrapped`;
-    const params: any[] = [];
+  async getTotalCount(userId?: string): Promise<number> {
+    await connectToDatabase();
 
+    const filter: any = {};
     if (userId) {
-      sql += ` WHERE user_id = ?`;
-      params.push(userId);
+      filter.user_id = userId;
     }
 
-    const stmt = this.db.prepare(sql);
-    const result = stmt.get(...params) as { count: number };
-    return result.count;
+    return await SearchResult.countDocuments(filter);
   }
 
   // Update processed status for a specific result
-  updateProcessedStatus(id: number, processed: number): void {
-    const stmt = this.db.prepare(`
-      UPDATE history_scrapped
-      SET processed = ?
-      WHERE id = ?
-    `);
-    stmt.run(processed, id);
+  async updateProcessedStatus(id: string, processed: number): Promise<void> {
+    await connectToDatabase();
+
+    await SearchResult.findByIdAndUpdate(id, { processed });
   }
 
   // Update processed status for all results of a query
-  updateProcessedStatusByQuery(query: string, processed: number, userId?: string): void {
-    let sql = `UPDATE history_scrapped SET processed = ? WHERE search_query = ?`;
-    const params: any[] = [processed, query];
+  async updateProcessedStatusByQuery(query: string, processed: number, userId?: string): Promise<void> {
+    await connectToDatabase();
 
+    const filter: any = { search_query: query };
     if (userId) {
-      sql += ` AND user_id = ?`;
-      params.push(userId);
+      filter.user_id = userId;
     }
 
-    const stmt = this.db.prepare(sql);
-    stmt.run(...params);
+    await SearchResult.updateMany(filter, { processed });
   }
 
   // Check if domain exists in database
-  domainExists(domain: string, userId?: string): boolean {
-    let sql = `SELECT COUNT(*) as count FROM history_scrapped WHERE link = ?`;
-    const params: any[] = [domain];
+  async domainExists(domain: string, userId?: string): Promise<boolean> {
+    await connectToDatabase();
 
+    const filter: any = { link: domain };
     if (userId) {
-      sql += ` AND user_id = ?`;
-      params.push(userId);
+      filter.user_id = userId;
     }
 
-    const stmt = this.db.prepare(sql);
-    const result = stmt.get(...params) as { count: number };
-    return result.count > 0;
+    const count = await SearchResult.countDocuments(filter);
+    return count > 0;
   }
 
   // Get pagination state for a query
-  getPaginationState(query: string, userId: string): SearchPagination | null {
-    const stmt = this.db.prepare(`
-      SELECT * FROM search_pagination
-      WHERE search_query = ? AND user_id = ?
-    `);
-    return stmt.get(query, userId) as SearchPagination | null;
+  async getPaginationState(query: string, userId: string): Promise<ISearchPagination | null> {
+    await connectToDatabase();
+
+    const result = await SearchPagination.findOne({
+      search_query: query,
+      user_id: userId
+    }).lean() as any;
+
+    if (!result) return null;
+
+    return {
+      _id: result._id?.toString(),
+      search_query: result.search_query,
+      user_id: result.user_id?.toString(),
+      last_start_position: result.last_start_position,
+      total_requests_made: result.total_requests_made,
+      last_updated: result.last_updated,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+    };
   }
 
   // Update pagination state
-  updatePaginationState(query: string, userId: string, startPosition: number, requestsMade: number): void {
-    const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO search_pagination
-      (search_query, user_id, last_start_position, total_requests_made, last_updated)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `);
-    stmt.run(query, userId, startPosition, requestsMade);
+  async updatePaginationState(query: string, userId: string, startPosition: number, requestsMade: number): Promise<void> {
+    await connectToDatabase();
+
+    await SearchPagination.findOneAndUpdate(
+      { search_query: query, user_id: userId },
+      {
+        last_start_position: startPosition,
+        total_requests_made: requestsMade,
+        last_updated: new Date(),
+      },
+      { upsert: true }
+    );
   }
 
   // Reset pagination state for a query
-  resetPaginationState(query: string, userId: string): void {
-    const stmt = this.db.prepare(`
-      DELETE FROM search_pagination
-      WHERE search_query = ? AND user_id = ?
-    `);
-    stmt.run(query, userId);
+  async resetPaginationState(query: string, userId: string): Promise<void> {
+    await connectToDatabase();
+
+    await SearchPagination.deleteOne({
+      search_query: query,
+      user_id: userId
+    });
   }
 
   // Get all pagination states for a user
-  getAllPaginationStates(userId: string): SearchPagination[] {
-    const stmt = this.db.prepare(`
-      SELECT * FROM search_pagination
-      WHERE user_id = ?
-      ORDER BY last_updated DESC
-    `);
-    return stmt.all(userId) as SearchPagination[];
+  async getAllPaginationStates(userId: string): Promise<ISearchPagination[]> {
+    await connectToDatabase();
+
+    const results = await SearchPagination.find({ user_id: userId })
+      .sort({ last_updated: -1 })
+      .lean();
+
+    return results.map(result => ({
+      _id: result._id?.toString(),
+      search_query: result.search_query,
+      user_id: result.user_id?.toString(),
+      last_start_position: result.last_start_position,
+      total_requests_made: result.total_requests_made,
+      last_updated: result.last_updated,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+    }));
   }
 
 
   // Insert single search result manually
-  insertManualSearchResult(result: SearchResult): number {
-    const stmt = this.db.prepare(`
-      INSERT INTO history_scrapped (
-        search_query, title, link, user_id, processed, category
-      ) VALUES (?, ?, ?, ?, ?, ?)
-    `);
+  async insertManualSearchResult(result: ISearchResult): Promise<string> {
+    await connectToDatabase();
 
-    const info = stmt.run(
-      result.search_query,
-      result.title || null,
-      result.link || null,
-      result.user_id,
-      result.processed || 0,
-      result.category || 0
-    );
+    const newResult = new SearchResult({
+      search_query: result.search_query,
+      title: result.title,
+      link: result.link,
+      user_id: result.user_id,
+      processed: result.processed || 0,
+      category: result.category || 0,
+      search_date: result.search_date || new Date(),
+    });
 
-    return info.lastInsertRowid as number;
+    const saved = await newResult.save();
+    return saved._id.toString();
   }
 
   // Get one unprocessed or error result with link (public endpoint)
-  getOneUnprocessedResult(): SearchResult | null {
-    const stmt = this.db.prepare(`
-      SELECT * FROM history_scrapped
-      WHERE (processed = 0 OR processed = 3) AND link IS NOT NULL AND link != ''
-      ORDER BY created_at ASC
-      LIMIT 1
-    `);
-    return stmt.get() as SearchResult | null;
+  async getOneUnprocessedResult(): Promise<ISearchResult | null> {
+    await connectToDatabase();
+
+    const result = await SearchResult.findOne({
+      $and: [
+        { $or: [{ processed: 0 }, { processed: 3 }] },
+        { link: { $ne: null } },
+        { link: { $ne: '' } }
+      ]
+    })
+    .sort({ createdAt: 1 })
+    .lean() as any;
+
+    if (!result) return null;
+
+    return {
+      _id: result._id?.toString(),
+      id: result._id?.toString(), // For backward compatibility
+      search_query: result.search_query,
+      title: result.title,
+      link: result.link,
+      search_date: result.search_date,
+      user_id: result.user_id?.toString(),
+      processed: result.processed,
+      category: result.category,
+      contact_url: result.contact_url,
+      is_wordpress: result.is_wordpress,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      created_at: result.createdAt, // For backward compatibility
+    };
   }
 
   // Update multiple records with contact_url, category, and is_wordpress
-  updateRecordsWithMetadata(updates: Array<{
-    id: number;
+  async updateRecordsWithMetadata(updates: Array<{
+    id: string;
     contact_url?: string;
     category?: string;
     is_wordpress?: boolean;
-  }>): { updated: number; errors: Array<{ id: number; error: string }> } {
-    const stmt = this.db.prepare(`
-      UPDATE history_scrapped
-      SET contact_url = ?, category = ?, is_wordpress = ?
-      WHERE id = ?
-    `);
+  }>): Promise<{ updated: number; errors: Array<{ id: string; error: string }> }> {
+    await connectToDatabase();
 
-    const updateMany = this.db.transaction((updates: Array<{
-      id: number;
-      contact_url?: string;
-      category?: string;
-      is_wordpress?: boolean;
-    }>) => {
-      const results = { updated: 0, errors: [] as Array<{ id: number; error: string }> };
+    const results = { updated: 0, errors: [] as Array<{ id: string; error: string }> };
 
-      for (const update of updates) {
-        try {
-          const result = stmt.run(
-            update.contact_url || null,
-            update.category || null,
-            update.is_wordpress ? 1 : 0,
-            update.id
-          );
+    for (const update of updates) {
+      try {
+        const result = await SearchResult.findByIdAndUpdate(
+          update.id,
+          {
+            contact_url: update.contact_url || null,
+            category: update.category || null,
+            is_wordpress: update.is_wordpress || false,
+          },
+          { new: true }
+        );
 
-          if (result.changes > 0) {
-            results.updated++;
-          } else {
-            results.errors.push({ id: update.id, error: 'Record not found' });
-          }
-        } catch (error) {
-          results.errors.push({
-            id: update.id,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
+        if (result) {
+          results.updated++;
+        } else {
+          results.errors.push({ id: update.id, error: 'Record not found' });
         }
+      } catch (error) {
+        results.errors.push({
+          id: update.id,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
+    }
 
-      return results;
-    });
-
-    return updateMany(updates);
+    return results;
   }
 }
 
 // User management class
 export class UserDatabase {
-  private db: BetterSqlite3.Database;
-
   constructor() {
-    this.db = getDatabase();
+    // Ensure database connection
+    connectToDatabase().catch(console.error);
   }
 
   // Create a new user
-  createUser(email: string, password: string, name?: string): User {
-    const stmt = this.db.prepare(`
-      INSERT INTO users (email, password, name)
-      VALUES (?, ?, ?)
-    `);
+  async createUser(email: string, password: string, name?: string): Promise<IUser> {
+    await connectToDatabase();
 
-    const info = stmt.run(email, password, name || null);
-
-    return {
-      id: info.lastInsertRowid as number,
+    const newUser = new User({
       email,
       password,
       name,
+    });
+
+    const saved = await newUser.save();
+
+    return {
+      _id: saved._id.toString(),
+      email: saved.email,
+      password: saved.password,
+      name: saved.name,
+      createdAt: saved.createdAt,
+      updatedAt: saved.updatedAt,
     };
   }
 
   // Get user by email
-  getUserByEmail(email: string): User | null {
-    const stmt = this.db.prepare(`
-      SELECT * FROM users WHERE email = ?
-    `);
-    return stmt.get(email) as User | null;
+  async getUserByEmail(email: string): Promise<IUser | null> {
+    await connectToDatabase();
+
+    const user = await User.findOne({ email }).lean() as any;
+
+    if (!user) return null;
+
+    return {
+      _id: user._id?.toString(),
+      email: user.email,
+      password: user.password,
+      name: user.name,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 
   // Get user by ID
-  getUserById(id: number): User | null {
-    const stmt = this.db.prepare(`
-      SELECT * FROM users WHERE id = ?
-    `);
-    return stmt.get(id) as User | null;
+  async getUserById(id: string): Promise<IUser | null> {
+    await connectToDatabase();
+
+    const user = await User.findById(id).lean() as any;
+
+    if (!user) return null;
+
+    return {
+      _id: user._id?.toString(),
+      email: user.email,
+      password: user.password,
+      name: user.name,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 
   // Update user
-  updateUser(id: number, updates: Partial<User>): void {
-    const fields = [];
-    const values = [];
+  async updateUser(id: string, updates: Partial<IUser>): Promise<void> {
+    await connectToDatabase();
+
+    const updateData: any = {};
 
     if (updates.email) {
-      fields.push('email = ?');
-      values.push(updates.email);
+      updateData.email = updates.email;
     }
     if (updates.password) {
-      fields.push('password = ?');
-      values.push(updates.password);
+      updateData.password = updates.password;
     }
     if (updates.name !== undefined) {
-      fields.push('name = ?');
-      values.push(updates.name);
+      updateData.name = updates.name;
     }
 
-    if (fields.length === 0) return;
+    if (Object.keys(updateData).length === 0) return;
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
-    values.push(id);
-
-    const stmt = this.db.prepare(`
-      UPDATE users SET ${fields.join(', ')} WHERE id = ?
-    `);
-    stmt.run(...values);
+    await User.findByIdAndUpdate(id, updateData);
   }
 
   // Delete user
-  deleteUser(id: number): void {
-    const stmt = this.db.prepare(`
-      DELETE FROM users WHERE id = ?
-    `);
-    stmt.run(id);
+  async deleteUser(id: string): Promise<void> {
+    await connectToDatabase();
+
+    await User.findByIdAndDelete(id);
   }
 }
 
-// Export singleton instance
+// Export instances for use in API routes
 export const searchResultsRepo = new SearchResultsRepository();
+export const userDb = new UserDatabase();

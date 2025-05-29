@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { searchResultsRepo } from '@/lib/database';
 
 interface UpdateMetadataRequest {
-  id: number;
+  id: string;
   contact_url: string;
   category: string;
   is_wordpress: boolean;
@@ -15,9 +15,9 @@ export async function POST(request: NextRequest) {
     // Validate that body is an array
     if (!Array.isArray(body)) {
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Request body must be an array of objects' 
+          error: 'Request body must be an array of objects'
         },
         { status: 400 }
       );
@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      if (typeof item.id !== 'number') {
-        validationErrors.push(`Item at index ${index}: id must be a number`);
+      if (typeof item.id !== 'string') {
+        validationErrors.push(`Item at index ${index}: id must be a string`);
         return;
       }
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Perform the updates
-    const result = searchResultsRepo.updateRecordsWithMetadata(validUpdates);
+    const result = await searchResultsRepo.updateRecordsWithMetadata(validUpdates);
 
     // Return success response
     return NextResponse.json({

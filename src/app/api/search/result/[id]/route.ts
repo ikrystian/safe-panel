@@ -15,14 +15,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: idParam } = await params;
-    const id = parseInt(idParam);
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
-    }
+    const { id } = await params;
 
     // Get result by ID
-    const result = searchResultsRepo.getSearchResultById(id, userId);
+    const result = await searchResultsRepo.getSearchResultById(id, userId);
 
     if (!result) {
       return NextResponse.json({ error: 'Result not found' }, { status: 404 });

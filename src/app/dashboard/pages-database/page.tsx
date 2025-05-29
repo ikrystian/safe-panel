@@ -46,7 +46,8 @@ import {
 } from "lucide-react";
 
 interface SearchResult {
-  id?: number;
+  _id?: string;
+  id?: string; // For backward compatibility
   search_query: string;
   title?: string;
   link?: string;
@@ -54,7 +55,11 @@ interface SearchResult {
   user_id?: string;
   processed?: number;
   category?: number;
-  created_at?: string;
+  contact_url?: string;
+  is_wordpress?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  created_at?: string; // For backward compatibility
 }
 
 interface SearchHistory {
@@ -64,12 +69,15 @@ interface SearchHistory {
 }
 
 interface SearchPagination {
-  id?: number;
+  _id?: string;
+  id?: string; // For backward compatibility
   search_query: string;
   user_id: string;
   last_start_position: number;
   total_requests_made: number;
   last_updated?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export default function PagesDatabasePage() {
@@ -92,10 +100,11 @@ export default function PagesDatabasePage() {
     null
   );
 
-  // Load search history on component mount
+  // Load search history and all results on component mount
   useEffect(() => {
     loadSearchHistory();
     loadAllPaginationStates();
+    loadAllResults(); // Load all results on page load
   }, []);
 
   const loadSearchHistory = async () => {
@@ -120,6 +129,19 @@ export default function PagesDatabasePage() {
       }
     } catch (error) {
       console.error("Error loading pagination states:", error);
+    }
+  };
+
+  const loadAllResults = async () => {
+    try {
+      const response = await fetch("/api/search?all=true");
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data.results || []);
+        setSelectedQuery("Wszystkie wyniki"); // Set a special query name for all results
+      }
+    } catch (error) {
+      console.error("Error loading all results:", error);
     }
   };
 
@@ -388,6 +410,17 @@ export default function PagesDatabasePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadAllResults}
+                className="mb-3"
+              >
+                <Database className="h-4 w-4 mr-2" />
+                Pokaż wszystkie wyniki
+              </Button>
+            </div>
             <div className="space-y-3">
               {searchHistory.map((item) => {
                 // Find corresponding pagination state
@@ -475,11 +508,16 @@ export default function PagesDatabasePage() {
       {selectedQuery && searchResults.length > 0 && (
         <Card ref={resultsTableRef}>
           <CardHeader>
-            <CardTitle>Wyniki wyszukiwania dla: "{selectedQuery}"</CardTitle>
+            <CardTitle>
+              {selectedQuery === "Wszystkie wyniki"
+                ? "Wszystkie wyniki z bazy danych"
+                : `Wyniki wyszukiwania dla: "${selectedQuery}"`}
+            </CardTitle>
             <CardDescription>
-              Znaleziono {searchResults.length} wyników (automatycznie
-              przetworzonych)
-              {paginationState && (
+              Znaleziono {searchResults.length} wyników
+              {selectedQuery !== "Wszystkie wyniki" &&
+                " (automatycznie przetworzonych)"}
+              {paginationState && selectedQuery !== "Wszystkie wyniki" && (
                 <div className="mt-2 text-sm">
                   Wykonano {paginationState.total_requests_made} zapytań do API.
                   Następna pozycja startowa:{" "}
@@ -487,7 +525,7 @@ export default function PagesDatabasePage() {
                 </div>
               )}
             </CardDescription>
-            {paginationState && (
+            {paginationState && selectedQuery !== "Wszystkie wyniki" && (
               <div className="flex gap-2 mt-4">
                 <Button
                   onClick={continueSearch}
@@ -526,10 +564,11 @@ export default function PagesDatabasePage() {
                   <TableRow
                     key={`${result.link}-${index}`}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() =>
-                      result.id &&
-                      router.push(`/dashboard/pages-database/${result.id}`)
-                    }
+                    onClick={() => {
+                      const resultId = result._id || result.id;
+                      resultId &&
+                        router.push(`/dashboard/pages-database/${resultId}`);
+                    }}
                   >
                     <TableCell>
                       <div className="flex items-center justify-center">
@@ -547,10 +586,10 @@ export default function PagesDatabasePage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {result.created_at
-                        ? new Date(result.created_at).toLocaleDateString(
-                            "pl-PL"
-                          )
+                      {result.createdAt || result.created_at
+                        ? new Date(
+                            result.createdAt || result.created_at!
+                          ).toLocaleDateString("pl-PL")
                         : ""}
                     </TableCell>
                     <TableCell className="max-w-xs">
@@ -569,12 +608,13 @@ export default function PagesDatabasePage() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            result.id &&
+                            const resultId = result._id || result.id;
+                            resultId &&
                               router.push(
-                                `/dashboard/pages-database/${result.id}`
+                                `/dashboard/pages-database/${resultId}`
                               );
                           }}
-                          disabled={!result.id}
+                          disabled={!(result._id || result.id)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>

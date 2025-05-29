@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Extract domain from link for duplicate checking
 
     // Check if domain already exists for this user
-    const existingResult = searchResultsRepo.domainExists(link, userId);
+    const existingResult = await searchResultsRepo.domainExists(link, userId);
     if (existingResult) {
       return NextResponse.json(
         { error: 'This page already exists in your database' },
@@ -57,10 +57,10 @@ export async function POST(request: NextRequest) {
     };
 
     // Insert the result
-    const insertedId = searchResultsRepo.insertManualSearchResult(searchResult);
+    const insertedId = await searchResultsRepo.insertManualSearchResult(searchResult);
 
     // Get the inserted result to return
-    const insertedResult = searchResultsRepo.getSearchResultById(insertedId, userId);
+    const insertedResult = await searchResultsRepo.getSearchResultById(insertedId, userId);
 
     return NextResponse.json({
       success: true,
