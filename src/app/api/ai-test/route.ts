@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { processWithAIAgent } from "@/lib/ai-agent";
 
 export async function POST(request: Request) {
   try {
@@ -22,35 +23,69 @@ export async function POST(request: Request) {
 
     const selectedModel = model || "deepseek/deepseek-chat-v3-0324:free";
 
-    // Prepare the request body
-    const requestBody: any = {
-      model: selectedModel,
-      messages: [{ role: "user", content: prompt }],
-    };
-
-    // Add web search functionality if enabled
+    // Check if AI Agent is enabled
     if (webSearch) {
-      // Check if model already has online capabilities or supports :online suffix
-      if (selectedModel.includes("-online") || selectedModel.includes("search-preview")) {
-        // Model already has online capabilities, no need to modify
-      } else if (selectedModel.includes("openai/") || selectedModel.includes("anthropic/") || selectedModel.includes("google/")) {
-        // Use :online suffix for supported models
-        requestBody.model = selectedModel.includes(":") ? selectedModel : `${selectedModel}:online`;
-      } else {
-        // Use web plugin for other models
-        requestBody.plugins = [{
-          id: "web",
-          max_results: maxResults || 5,
-        }];
+      // Use AI Agent to process prompt with web pages
+      const agentResult = await processWithAIAgent(
+        prompt,
+        searchContextSize || "medium",
+        maxResults || 3,
+        selectedModel
+      );
+
+      if (!agentResult.success) {
+        return NextResponse.json(
+          { error: agentResult.error },
+          { status: 400 }
+        );
       }
 
-      // Add web search options for models with built-in web search
-      if (searchContextSize && (selectedModel.includes("openai/") || selectedModel.includes("perplexity/"))) {
-        requestBody.web_search_options = {
-          search_context_size: searchContextSize || "medium"
-        };
-      }
+      // Create annotations from processed pages
+      const annotations = agentResult.pages.map(page => ({
+        url_citation: {
+          url: page.url,
+          title: page.title || page.url,
+          content: page.error ? `Błąd: ${page.error}` : page.content.substring(0, 200) + '...'
+        }
+      }));
+
+      return NextResponse.json({
+        response: agentResult.analysis,
+        model: selectedModel,
+        annotations,
+        webSearchEnabled: true,
+        aiAgentUsed: true,
+        usage: agentResult.usage
+      });
     }
+
+    // Standard AI request without web search
+    const newPrompt = JSON.stringify({
+      "task": "Znajdź na stronie https://wedohotels.pl odnośnik do strony kontaktu i określ kategorię strony",
+      "requirements": {
+        "output_format": {
+          "type": "JSON",
+          "structure": {
+            "contact_url": "string (pełny URL strony kontaktowej)",
+            "category": "string (dopasowana kategoria z listy)",
+            "wordpress": "boolean (czy strona używa WordPress)"
+          }
+        },
+        "categories": [
+          "Hotele i noclegi",
+          "Usługi biznesowe",
+          "Usługi profesjonalne",
+          "Usługi osobiste"
+        ],
+        "wordpress_check": "Sprawdź obecność 'wp-content' w kodzie strony"
+      },
+      "instructions": "Zwróć TYLKO JSON bez żadnych dodatkowych komentarzy"
+    });
+
+    const requestBody = {
+      model: selectedModel,
+      messages: [{ role: "user", content: newPrompt }],
+    };
 
     const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -81,18 +116,28 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({
-      response: responseText,
-      model: requestBody.model, // Return the actual model used (may include :online suffix)
-      usage: openRouterData.usage || null,
-      annotations: openRouterData.choices?.[0]?.message?.annotations || null,
-      webSearchEnabled: webSearch || false
-    });
+    try {
+      const parsedResponse = JSON.parse(responseText);
+      return NextResponse.json({
+        response: parsedResponse,
+        model: requestBody.model, // Return the actual model used
+        usage: openRouterData.usage || null,
+        annotations: openRouterData.choices?.[0]?.message?.annotations || [],
+        webSearchEnabled: false,
+        aiAgentUsed: false
+      });
+    } catch (e) {
+      console.error("Error parsing JSON response:", responseText);
+      return NextResponse.json({
+        error: "Błąd parsowania odpowiedzi JSON od OpenRouter.",
+        status: 500
+      });
+    }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in /api/ai-test:", error);
     let errorMessage = "Wystąpił błąd podczas przetwarzania żądania.";
-    if (error.message) {
+    if (error instanceof Error) {
       errorMessage = `Błąd: ${error.message}`;
     }
 

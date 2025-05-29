@@ -8,7 +8,7 @@
 - 🔍 **Pages Database**: Advanced web search with SerpAPI integration (50 requests per search)
 - ➕ **Manual Page Addition**: Add pages manually without using search API
 - 🤖 **Automatic Processing**: Domain extraction, duplicate removal, and categorization during search
-- 🧠 **AI Test**: Interactive AI testing with internet connectivity via OpenRouter API
+- 🧠 **AI Test**: Interactive AI testing with AI Agent for opening web pages and analyzing content
 - 💾 **SQLite Database**: Local data storage with search history and results
 - 🎨 **Modern UI**: Built with chadcn/ui components and Tailwind CSS
 - 📱 **Responsive**: Mobile-first responsive design
@@ -481,9 +481,9 @@ curl -X POST http://localhost:3001/api/public/unprocessed \
   -d '{"id": 1007}' | jq
 ```
 
-## AI Test with Internet Connectivity (Implemented)
+## AI Test with AI Agent for Web Page Analysis (Implemented)
 
-The AI Test page provides a comprehensive interface for testing various AI models with optional internet connectivity through OpenRouter API:
+The AI Test page provides a comprehensive interface for testing various AI models with optional AI Agent that can open web pages and analyze their content:
 
 ### 🧠 Model Selection
 
@@ -497,26 +497,26 @@ The AI Test page provides a comprehensive interface for testing various AI model
 - **Free Models**: Many free-tier models available for testing
 - **Premium Models**: Access to advanced models with enhanced capabilities
 
-### 🌐 Internet Connectivity Features
+### 🌐 AI Agent Features
 
-#### Web Search Integration
+#### Web Page Analysis Integration
 
-- **Toggle Control**: Easy on/off switch for internet access
-- **Multiple Approaches**:
-  - `:online` suffix for supported models (OpenAI, Anthropic, Google)
-  - Web plugin for other models
-  - Native online models (Perplexity Sonar)
-- **Search Context Size**: Configurable context levels:
-  - **Low**: Minimal search context, suitable for basic queries
-  - **Medium**: Moderate search context, good for general queries
-  - **High**: Extensive search context, ideal for detailed research
-- **Max Results**: Control number of search results (1-10)
+- **Toggle Control**: Easy on/off switch for AI Agent functionality
+- **URL Detection**: Automatically extracts URLs from user prompts
+- **Web Page Fetching**: Downloads and processes content from specified URLs
+- **Content Analysis**: AI analyzes web page content based on user prompts
+- **Analysis Depth**: Configurable analysis levels:
+  - **Podstawowa**: Basic analysis, focuses on main information
+  - **Średnia**: Moderate analysis, includes details and context
+  - **Szczegółowa**: Detailed analysis, comprehensive information and relationships
+- **Max Pages**: Control number of pages to process (1-5)
 
-#### Pricing Transparency
+#### Error Handling
 
-- **Cost Display**: Shows token usage and estimated costs
-- **Context-based Pricing**: Different costs based on search context size
-- **Plugin Pricing**: $4 per 1000 results for web plugin usage
+- **URL Validation**: Validates and processes URLs from prompts
+- **Connection Errors**: Handles timeouts, DNS errors, and HTTP errors
+- **Content Processing**: Extracts text content from HTML pages
+- **Graceful Degradation**: Continues processing even if some pages fail
 
 ### 📊 Response Features
 
@@ -527,51 +527,53 @@ The AI Test page provides a comprehensive interface for testing various AI model
 - **Real-time Streaming**: Live response generation display
 - **Error Handling**: Comprehensive error messages and validation
 
-#### Web Citations
+#### Web Page Citations
 
-- **Source Links**: Clickable links to web sources used by AI
-- **Citation Metadata**: Title, URL, and content snippets
+- **Source Links**: Clickable links to analyzed web pages
+- **Page Metadata**: Title, URL, and content snippets from processed pages
 - **Visual Indicators**: Globe icons and external link indicators
-- **Organized Display**: Clean, card-based layout for citations
+- **Organized Display**: Clean, card-based layout for page citations
+- **Error Display**: Shows errors for pages that couldn't be processed
 
 ### 🔧 Technical Implementation
 
-#### API Integration
+#### AI Agent Integration
 
-- **OpenRouter API**: Unified interface for multiple AI providers
-- **Request Customization**: Dynamic request body based on model and settings
-- **Error Handling**: Robust error handling with detailed messages
-- **Response Processing**: Standardized response format with annotations
+- **Custom AI Agent**: Built-in AI Agent for web page processing
+- **URL Extraction**: Automatic URL detection from user prompts using regex patterns
+- **Web Fetching**: HTTP requests with proper headers and timeout handling
+- **Content Processing**: HTML parsing and text extraction
+- **AI Analysis**: Content analysis using selected AI model
 
-#### Model-Specific Handling
+#### Technical Features
 
-- **Online Models**: Automatic detection of models with built-in web capabilities
-- **Suffix Addition**: Automatic `:online` suffix for compatible models
-- **Plugin Fallback**: Web plugin for models without native online support
-- **Context Options**: Search context size for supported models
+- **Timeout Handling**: 10-second timeout for web requests
+- **Error Recovery**: Graceful handling of failed page loads
+- **Content Limits**: Automatic content truncation to avoid token limits
+- **Multiple URLs**: Support for processing multiple URLs in single prompt
 
 ### 🎯 Use Cases
 
 #### Research & Analysis
 
-- **Current Information**: Access to real-time web data
-- **Fact Checking**: Verify information with web sources
-- **Market Research**: Get latest market trends and data
-- **News Analysis**: Access current news and events
+- **Web Page Analysis**: Analyze specific web pages and their content
+- **Content Comparison**: Compare multiple web pages side by side
+- **Information Extraction**: Extract specific information from web pages
+- **Website Evaluation**: Evaluate website content, structure, and purpose
 
 #### Development & Testing
 
-- **API Testing**: Test different AI models and capabilities
-- **Prompt Engineering**: Experiment with prompts and web search
-- **Cost Analysis**: Compare costs across different models and settings
-- **Performance Testing**: Evaluate response quality and speed
+- **AI Model Testing**: Test different AI models with web content analysis
+- **Prompt Engineering**: Experiment with prompts for web page analysis
+- **Web Scraping Testing**: Test web content extraction capabilities
+- **Performance Testing**: Evaluate AI analysis quality and speed
 
 #### Content Creation
 
-- **Research-backed Content**: Create content with web-sourced information
-- **Current Events**: Write about latest developments
-- **Data-driven Insights**: Generate insights based on current data
-- **Competitive Analysis**: Research competitors and market trends
+- **Content Analysis**: Analyze existing web content for insights
+- **Competitive Research**: Research competitor websites and content
+- **Website Reviews**: Generate detailed reviews of websites
+- **Content Summarization**: Summarize long web pages and articles
 
 ### 🛡️ Security & Privacy
 

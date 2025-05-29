@@ -42,10 +42,6 @@ const AI_MODELS = [
   { value: "google/gemini-2.5-pro-preview", label: "Gemini 2.5 Pro" },
   { value: "openai/gpt-4.1", label: "GPT-4.1" },
   {
-    value: "perplexity/llama-3.1-sonar-small-128k-online",
-    label: "Perplexity Sonar Small (Online)",
-  },
-  {
     value: "perplexity/llama-3.1-sonar-large-128k-online",
     label: "Perplexity Sonar Large (Online)",
   },
@@ -99,12 +95,25 @@ export default function AITestPage() {
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [usage, setUsage] = useState<any>(null);
+  const [usage, setUsage] = useState<{
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    total_cost?: number;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const [webSearch, setWebSearch] = useState(false);
   const [searchContextSize, setSearchContextSize] = useState("medium");
-  const [maxResults, setMaxResults] = useState(5);
-  const [annotations, setAnnotations] = useState<any[]>([]);
+  const [maxResults, setMaxResults] = useState(3);
+  const [annotations, setAnnotations] = useState<
+    {
+      url_citation?: {
+        url: string;
+        title?: string;
+        content?: string;
+      };
+    }[]
+  >([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,8 +155,10 @@ export default function AITestPage() {
       setResponse(data.response);
       setUsage(data.usage);
       setAnnotations(data.annotations || []);
-    } catch (err: any) {
-      setError(err.message || "Wystąpił nieoczekiwany błąd");
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd"
+      );
     } finally {
       setLoading(false);
     }
@@ -180,8 +191,8 @@ export default function AITestPage() {
           AI Test
         </h1>
         <p className="text-muted-foreground">
-          Testuj różne modele AI z OpenRouter API z opcjonalnym dostępem do
-          internetu
+          Testuj różne modele AI z OpenRouter API z opcjonalnym agentem AI do
+          otwierania stron
         </p>
       </div>
 
@@ -209,7 +220,7 @@ export default function AITestPage() {
                 </Select>
               </div>
 
-              {/* Web Search Controls */}
+              {/* AI Agent Controls */}
               <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
@@ -218,10 +229,11 @@ export default function AITestPage() {
                       className="flex items-center gap-2"
                     >
                       <Globe className="h-4 w-4" />
-                      Wyszukiwanie internetowe
+                      Agent AI do otwierania stron
                     </Label>
                     <p className="text-sm text-muted-foreground">
-                      Pozwól AI na dostęp do aktualnych informacji z internetu
+                      Pozwól AI na otwieranie stron i wyszukiwanie informacji z
+                      promptu
                     </p>
                   </div>
                   <Switch
@@ -236,7 +248,7 @@ export default function AITestPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label htmlFor="search-context">
-                          Rozmiar kontekstu
+                          Głębokość analizy
                         </Label>
                         <Select
                           value={searchContextSize}
@@ -246,28 +258,29 @@ export default function AITestPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="low">Niski</SelectItem>
-                            <SelectItem value="medium">Średni</SelectItem>
-                            <SelectItem value="high">Wysoki</SelectItem>
+                            <SelectItem value="low">Podstawowa</SelectItem>
+                            <SelectItem value="medium">Średnia</SelectItem>
+                            <SelectItem value="high">Szczegółowa</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="max-results">Maks. wyników</Label>
+                        <Label htmlFor="max-results">Maks. stron</Label>
                         <Input
                           id="max-results"
                           type="number"
                           min="1"
-                          max="10"
+                          max="5"
                           value={maxResults}
                           onChange={(e) =>
-                            setMaxResults(parseInt(e.target.value) || 5)
+                            setMaxResults(parseInt(e.target.value) || 3)
                           }
                         />
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Większy kontekst = więcej informacji, ale wyższy koszt
+                      Większa głębokość = dokładniejsza analiza, ale dłuższy
+                      czas przetwarzania
                     </p>
                   </div>
                 )}
@@ -401,7 +414,8 @@ export default function AITestPage() {
 
             {!response && !loading && (
               <div className="text-center py-8 text-muted-foreground">
-                Wprowadź prompt i kliknij "Wyślij" aby otrzymać odpowiedź od AI
+                Wprowadź prompt i kliknij &quot;Wyślij&quot; aby otrzymać
+                odpowiedź od AI
               </div>
             )}
           </CardContent>
